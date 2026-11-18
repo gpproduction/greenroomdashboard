@@ -84,6 +84,7 @@ The dashboard lives at `http://<server-ip>:8080/dashboard/`. These URL options c
 |---|---|
 | `/dashboard/` | Mic/IEM roster, timers and order of service |
 | `/dashboard/?layout=timers` | Big timers only |
+| `/dashboard/?layout=order` | Order of service only |
 | `/dashboard/?layout=roster` | Roster only |
 | `/dashboard/?teams=Worship Team,Choir` | Only those teams |
 | `&scale=1.3` | Bigger text for a far-away screen |

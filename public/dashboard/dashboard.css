@@ -70,6 +70,9 @@ body.layout-roster main, body.no-side main { grid-template-columns: 1fr; }
 body.layout-roster .order, body.layout-roster .timers, body.no-side .order, body.no-side .timers { display: none !important; }
 body.layout-timers main { grid-template-columns: 1fr; }
 body.layout-timers .roster, body.layout-timers .order { display: none !important; }
+/* ?layout=order — order of service only, full width */
+body.layout-order main { grid-template-columns: 1fr !important; }
+body.layout-order .roster, body.layout-order .timers { display: none !important; }
 
 /* Teams stacked, one person per row, sized for reading from across the room */
 .roster {

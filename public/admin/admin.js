@@ -818,6 +818,7 @@
         el('li', {}, el('code', {}, `${origin}/dashboard/`), ' — everything'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=timers`), ' — big timers only (stage/greenroom clock)'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=roster`), ' — mic/IEM list only'),
+        el('li', {}, el('code', {}, `${origin}/dashboard/?layout=order`), ' — order of service only'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?teams=Worship Team`), ' — only certain teams (comma-separated)'),
         el('li', {}, 'Add ', el('code', {}, '&scale=1.3'), ' to make text larger on a distant TV.')),
     );

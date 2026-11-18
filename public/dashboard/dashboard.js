@@ -1,7 +1,7 @@
 /* Green Room dashboard — designed to run unattended in a Chrome kiosk window.
  *
  * URL options (combine with &):
- *   ?layout=full|roster|timers   which panels to show (default full)
+ *   ?layout=full|roster|order|timers   which panels to show (default full)
  *   ?teams=Worship Team,Choir    only show these teams (names, case-insensitive)
  *   ?scale=1.2                   make everything bigger/smaller
  *   ?side=0                      hide the right-hand panel
