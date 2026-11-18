@@ -135,7 +135,6 @@ body.no-side .side { display: none; }
   white-space: nowrap;
 }
 .chip .k { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.chip.empty { opacity: 0.35; }
 .chip.conflict { outline: 2px solid var(--bad); }
 
 /* Side panels ---------------------------------------------------------------- */

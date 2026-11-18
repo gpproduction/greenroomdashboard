@@ -510,7 +510,7 @@
       el('div', { class: 'grid2' },
         field('Host / IP address', el('input', { value: s.propresenter.host, placeholder: '192.168.1.50', oninput: (e) => { s.propresenter.host = e.target.value.trim(); } })),
         field('Port', el('input', { type: 'number', value: s.propresenter.port, oninput: (e) => { s.propresenter.port = Number(e.target.value); } }))),
-      check('Highlight the current item in the order of service', s.propresenter, 'showActiveItem'),
+      check('Highlight the item that is live in ProPresenter (matched by presentation name to the Planning Center item title)', s.propresenter, 'showActiveItem'),
       el('div', { class: 'row', style: 'margin-top:0.6rem' },
         el('button', {
           onclick: async () => {

@@ -99,7 +99,7 @@
   }
 
   function chip(label, dev, conflictIds) {
-    if (!dev) return el('span', { class: 'chip empty' }, el('span', { class: 'k' }, label), '—');
+    if (!dev) return null; // nothing assigned → no placeholder chip
     return el('span', {
       class: 'chip' + (conflictIds.has(dev.id) ? ' conflict' : ''),
       title: [dev.kind, dev.frequency].filter(Boolean).join(' · '),
@@ -152,6 +152,20 @@
     return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   }
 
+  // Which plan item is live in ProPresenter? ProPresenter tells us the name of the
+  // presentation that's currently showing; we match it to a Planning Center item
+  // title. Exact match wins; otherwise one name containing the other (e.g.
+  // "Raise A Hallelujah (Live)"). Only one item is ever highlighted.
+  function activeItemId(items, presentationName) {
+    const active = normalise(presentationName);
+    if (!active) return null;
+    const candidates = items.filter((i) => i.type !== 'header').map((i) => ({ id: i.id, t: normalise(i.title) })).filter((i) => i.t);
+    const exact = candidates.find((i) => i.t === active);
+    if (exact) return exact.id;
+    const partial = candidates.find((i) => Math.min(i.t.length, active.length) >= 4 && (active.includes(i.t) || i.t.includes(active)));
+    return partial ? partial.id : null;
+  }
+
   function renderOrder() {
     const panel = $('order-panel');
     const list = $('order');
@@ -159,14 +173,13 @@
     const items = state.plan?.items || [];
     if (!state.display.showOrderOfService || !items.length) { panel.classList.add('hidden'); return; }
     panel.classList.remove('hidden');
-    const active = normalise(pp.activePresentation);
+    const activeId = activeItemId(items, pp.activePresentation);
     for (const item of items) {
       if (item.type === 'header') {
         list.append(el('li', { class: 'header' }, item.title));
         continue;
       }
-      const t = normalise(item.title);
-      const isActive = active && t && (t === active || active.includes(t) || t.includes(active));
+      const isActive = item.id === activeId;
       list.append(el('li', { class: [isActive ? 'active' : '', item.position !== 'during' ? 'prepost' : ''].join(' ') },
         el('span', {}, item.title, item.key ? el('span', { class: 'key' }, item.key) : null,
           item.leader ? el('span', { class: 'leader' }, item.leader) : null),
