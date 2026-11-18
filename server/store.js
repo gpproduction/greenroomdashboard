@@ -32,7 +32,8 @@ function defaults() {
         showActiveItem: true,
       },
       display: {
-        title: 'Green Room',
+        showLogo: true,
+        logoVersion: 0, // bumped when the logo changes (cache-busting)
         timezone: 'America/New_York',
         showOrderOfService: true,
         showTimers: true,

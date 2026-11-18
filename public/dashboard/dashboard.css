@@ -38,6 +38,10 @@ body:hover { cursor: default; }
   padding: 0.8rem 1.4rem;
   border-bottom: 1px solid var(--line);
 }
+.brand { display: flex; align-items: center; gap: 1.3rem; min-width: 0; }
+.logo { height: 2.6rem; width: auto; max-width: 18rem; object-fit: contain; flex: none; }
+.logo:not(.hidden) + .heading { padding-left: 1.3rem; border-left: 1px solid var(--line); }
+.heading { min-width: 0; }
 .title { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.01em; }
 .plan { color: var(--muted); font-size: 1rem; margin-top: 0.15rem; }
 .clock { font-size: 2.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -131,7 +135,6 @@ body.no-side .side { display: none; }
   white-space: nowrap;
 }
 .chip .k { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
-.chip .ch { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
 .chip.empty { opacity: 0.35; }
 .chip.conflict { outline: 2px solid var(--bad); }
 

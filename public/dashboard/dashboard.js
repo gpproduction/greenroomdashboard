@@ -71,8 +71,10 @@
   function render() {
     if (!state) return;
     const { display, plan } = state;
-    document.title = display.title || 'Green Room';
-    $('title').textContent = display.title || 'Green Room';
+    const logo = $('logo');
+    logo.classList.toggle('hidden', display.showLogo === false);
+    const logoSrc = `/branding/logo?v=${display.logoVersion || 0}`;
+    if (logo.getAttribute('src') !== logoSrc) logo.setAttribute('src', logoSrc);
 
     if (plan) {
       const bits = [plan.serviceTypeName, plan.dates, plan.title || plan.seriesTitle].filter(Boolean);
@@ -101,7 +103,7 @@
     return el('span', {
       class: 'chip' + (conflictIds.has(dev.id) ? ' conflict' : ''),
       title: [dev.kind, dev.frequency].filter(Boolean).join(' · '),
-    }, el('span', { class: 'k' }, label), dev.name, dev.channel ? el('span', { class: 'ch' }, `ch ${dev.channel}`) : null);
+    }, el('span', { class: 'k' }, label), dev.name);
   }
 
   // Planning Center photo when the person has one, otherwise their initials.
@@ -219,7 +221,14 @@
   window.addEventListener('resize', () => requestAnimationFrame(autoFit));
 
   // ---- clock & service countdown -----------------------------------------------
+  function greeting() {
+    const hour = Number(new Date().toLocaleString('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone: tz() }));
+    return hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  }
+
   function tickClock() {
+    const g = greeting();
+    if ($('greeting').textContent !== g) $('greeting').textContent = g;
     $('clock').textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: tz() });
     const box = $('service-countdown');
     const times = (state?.plan?.times || []).filter((t) => t.type === 'service' || t.type === 'rehearsal');

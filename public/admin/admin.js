@@ -534,10 +534,49 @@
 
     // Display ---------------------------------------------------------------------------
     const origin = location.origin;
+    const logoImg = el('img', { class: 'logo-preview', alt: 'Logo', src: `/branding/logo?v=${Date.now()}` });
+    const logoInput = el('input', {
+      type: 'file',
+      accept: 'image/png,image/jpeg,image/webp,image/svg+xml',
+      class: 'hidden',
+      onchange: async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const dataUrl = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.onerror = reject;
+          r.readAsDataURL(file);
+        });
+        try {
+          await api('/api/admin/logo', { method: 'POST', body: { dataUrl } });
+          logoImg.src = `/branding/logo?v=${Date.now()}`;
+          toast('Logo updated');
+        } catch (err) { toast(err.message, true); }
+        e.target.value = '';
+      },
+    });
+    const logoBox = el('div', { class: 'logo-box' },
+      el('div', { class: 'logo-stage' }, logoImg),
+      el('div', {},
+        el('div', { class: 'row' },
+          el('button', { onclick: () => logoInput.click() }, 'Upload logo…'),
+          el('button', {
+            class: 'ghost',
+            onclick: async () => {
+              await api('/api/admin/logo', { method: 'DELETE' });
+              logoImg.src = `/branding/logo?v=${Date.now()}`;
+              toast('Using the default GrowPoint logo');
+            },
+          }, 'Reset to GrowPoint logo')),
+        el('div', { class: 'help' }, 'The dashboard is dark, so use a white or light logo on a transparent background (PNG or SVG).'),
+        logoInput));
     const displaySection = el('div', { class: 'section' },
       el('h2', {}, 'Dashboard display'),
+      el('p', { class: 'help' }, 'The header greets the room with “Good Morning”, “Good Afternoon” or “Good Evening” based on the time zone below.'),
+      logoBox,
+      check('Show the logo', s.display, 'showLogo'),
       el('div', { class: 'grid2' },
-        field('Title', el('input', { value: s.display.title, oninput: (e) => { s.display.title = e.target.value; } })),
         field('Time zone', el('input', { value: s.display.timezone, oninput: (e) => { s.display.timezone = e.target.value.trim(); } }), 'IANA name, e.g. America/New_York'),
         field('Full page reload every (hours)', el('input', { type: 'number', min: 0, value: s.display.reloadHours, oninput: (e) => { s.display.reloadHours = Number(e.target.value); } }), '0 = never. Live updates happen instantly regardless.')),
       check('Show ProPresenter timers', s.display, 'showTimers'),

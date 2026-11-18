@@ -1,5 +1,6 @@
 import './env.js'; // must be first: loads .env before other modules read process.env
 import http from 'node:http';
+import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -61,6 +62,42 @@ app.disable('x-powered-by');
 // If a reverse proxy on this machine is ever put in front (it sets X-Forwarded-*),
 // trusting loopback lets req.ip / req.secure reflect the real visitor. Harmless otherwise.
 app.set('trust proxy', 'loopback');
+// --- logo (custom upload in DATA_DIR, else the bundled GrowPoint logo) ----------------
+const LOGO_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/svg+xml': 'svg' };
+const DEFAULT_LOGO = path.join(__dirname, '..', 'public', 'img', 'growpoint-logo.png');
+function customLogoPath() {
+  for (const ext of Object.values(LOGO_TYPES)) {
+    const p = path.join(store.DATA_DIR, `logo.${ext}`);
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+app.get('/branding/logo', (req, res) => {
+  // Locked-down CSP so an uploaded SVG can never run script if opened directly.
+  res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:");
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(customLogoPath() || DEFAULT_LOGO);
+});
+app.post('/api/admin/logo', auth.requireAdmin, express.json({ limit: '4mb' }), (req, res) => {
+  const m = /^data:([\w/+.-]+);base64,(.+)$/.exec(req.body?.dataUrl || '');
+  const ext = m && LOGO_TYPES[m[1]];
+  if (!ext) return res.status(400).json({ error: 'Upload a PNG, JPG, WebP or SVG image' });
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length > 3 * 1024 * 1024) return res.status(400).json({ error: 'Logo must be under 3 MB' });
+  const old = customLogoPath();
+  if (old) fs.unlinkSync(old);
+  fs.mkdirSync(store.DATA_DIR, { recursive: true });
+  fs.writeFileSync(path.join(store.DATA_DIR, `logo.${ext}`), buf);
+  store.update((db) => { db.settings.display.logoVersion = Date.now(); }, { topic: 'settings' });
+  res.json({ ok: true });
+});
+app.delete('/api/admin/logo', auth.requireAdmin, (req, res) => {
+  const old = customLogoPath();
+  if (old) fs.unlinkSync(old);
+  store.update((db) => { db.settings.display.logoVersion = Date.now(); }, { topic: 'settings' });
+  res.json({ ok: true });
+});
+
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/', (req, res) => res.redirect('/dashboard/'));

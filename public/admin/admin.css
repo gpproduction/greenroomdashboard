@@ -132,6 +132,10 @@ td.conflict select { border-color: var(--bad); }
 .devices-table td { padding: 0.3rem 0.35rem; }
 .devices-table select { min-width: 7.5rem; }
 
+.logo-box { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.6rem; }
+.logo-stage { background: #0b0d12; border-radius: 10px; padding: 0.8rem 1rem; }
+.logo-preview { display: block; height: 2.4rem; max-width: 16rem; object-fit: contain; }
+
 .toast {
   position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
   background: #222; color: #fff; padding: 0.55rem 1rem; border-radius: 10px; font-size: 0.9rem;
