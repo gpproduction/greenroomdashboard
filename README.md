@@ -88,6 +88,15 @@ The dashboard lives at `http://<server-ip>:8080/dashboard/`. These URL options c
 | `/dashboard/?teams=Worship Team,Choir` | Only those teams |
 | `&scale=1.3` | Bigger text for a far-away screen |
 
+### Saving it as a desktop app
+
+Green Room has app icons and names, so Chrome can open it in its own window, with a Dock or taskbar icon and no address bar:
+
+1. Open `http://<server-ip>:8080/dashboard/`, or `/admin/` for the admin app.
+2. In Chrome, open the **⋮ menu** and choose **Cast, save, and share**. Then choose **Install page as app…** or, on older Chrome, **Create shortcut…** and tick **Open as window**.
+
+Chrome's install button in the address bar only appears on `https://` sites. On the church network (`http://`), use the menu above. The result is the same.
+
 ### Running Chrome in kiosk mode
 
 Kiosk mode opens Chrome full screen with no browser controls. Add this command to the TV computer's startup items:

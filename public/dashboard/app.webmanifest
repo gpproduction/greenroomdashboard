@@ -1,0 +1,15 @@
+{
+  "id": "/dashboard/",
+  "name": "Green Room",
+  "short_name": "Green Room",
+  "description": "GrowPoint green room dashboard — mics, IEMs, order of service and timers.",
+  "start_url": "/dashboard/",
+  "scope": "/dashboard/",
+  "display": "standalone",
+  "background_color": "#0b0d12",
+  "theme_color": "#1D4850",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
