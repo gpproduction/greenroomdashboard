@@ -243,7 +243,8 @@
             avatar(m),
             el('div', {},
             el('div', { class: 'person-name' }, m.name, m.status === 'U' ? el('span', { class: 'status-U' }, '  unconfirmed') : null),
-            el('div', { class: 'help' }, m.positions.join(', '))),
+            el('div', { class: 'help' }, m.positions.join(', ')),
+            m.arrivedAt ? el('div', { class: 'arrived-note' }, `✓ Arrived ${new Date(m.arrivedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: churchTz() })}`) : null),
             m.extra ? el('button', {
               class: 'small danger',
               onclick: async () => { await api(`/api/admin/plans/${plan.id}/extras/${encodeURIComponent(m.key)}`, { method: 'DELETE' }); reload(); },
@@ -812,6 +813,43 @@
         el('button', { class: 'primary', onclick: () => saveSection('obs') }, 'Save OBS settings')),
       obsResult);
 
+    // UniFi Access ----------------------------------------------------------------------
+    const unifiResult = el('div', { class: 'help' });
+    const unifiSection = el('div', { class: 'section' },
+      el('h2', {}, 'UniFi Access (arrivals)'),
+      el('p', { class: 'help' }, 'Shows a green “Arrived” next to people on the dashboard once they badge in today. People are matched by name, so their UniFi Access name needs to match their Planning Center name (nicknames like Mackenzie “Kenzie” Smith also match “Kenzie Smith”).'),
+      el('p', { class: 'help' }, 'Create the token in UniFi Access → Settings → General → Advanced → API Token, with permission to view system logs. The console must be reachable from the NAS on port 12445.'),
+      check('Connect to UniFi Access', s.unifi, 'enabled'),
+      el('div', { class: 'grid2' },
+        field('UniFi console IP address', el('input', { value: s.unifi.host, placeholder: '192.168.1.1', oninput: (e) => { s.unifi.host = e.target.value.trim(); } })),
+        field('Port', el('input', { type: 'number', value: s.unifi.port, oninput: (e) => { s.unifi.port = Number(e.target.value); } }), 'Normally 12445'),
+        field('API token', el('input', { type: 'password', value: s.unifi.token, autocomplete: 'new-password', oninput: (e) => { s.unifi.token = e.target.value; } }))),
+      el('div', { class: 'row', style: 'margin-top:0.6rem' },
+        el('button', {
+          onclick: async () => {
+            unifiResult.className = 'help';
+            unifiResult.textContent = 'Testing…';
+            try {
+              const r = await api('/api/admin/unifi/test', { method: 'POST', body: { host: s.unifi.host, port: s.unifi.port, token: s.unifi.token } });
+              unifiResult.replaceChildren(
+                el('div', { class: 'ok-text' }, `✓ Connected — ${r.events} door event(s) today. ${r.matched.length} person(s) on this week's plan have arrived${r.matched.length ? `: ${r.matched.join(', ')}` : ''}.`),
+                r.recent.length ? el('table', { style: 'margin-top:0.5rem' },
+                  el('thead', {}, el('tr', {}, ['Name in UniFi', 'Time', 'Door', 'Result', 'Matches plan'].map((h) => el('th', {}, h)))),
+                  el('tbody', {}, r.recent.map((e) => el('tr', {},
+                    el('td', {}, e.name),
+                    el('td', {}, e.at ? new Date(e.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: churchTz() }) : ''),
+                    el('td', {}, e.door || ''),
+                    el('td', {}, e.result || ''),
+                    el('td', {}, e.matches.length ? e.matches.join(', ') : el('span', { class: 'muted' }, '—')))))) : null);
+            } catch (err) {
+              unifiResult.className = 'help error';
+              unifiResult.textContent = err.message;
+            }
+          },
+        }, 'Test connection'),
+        el('button', { class: 'primary', onclick: () => saveSection('unifi') }, 'Save UniFi settings')),
+      unifiResult);
+
     // Live item timing -----------------------------------------------------------------
     const liveSection = el('div', { class: 'section' },
       el('h2', {}, 'Live item timing'),
@@ -822,7 +860,7 @@
         field('Keep recording after each service ends (minutes)', el('input', { type: 'number', min: 0, max: 120, value: s.live.postRollMinutes, oninput: (e) => { s.live.postRollMinutes = Number(e.target.value); } }), 'In case the service runs long.')),
       el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('live') }, 'Save timing settings')));
 
-    root.replaceChildren(pcoSection, ppSection, hdSection, obsSection, liveSection, displaySection, pwSection);
+    root.replaceChildren(pcoSection, ppSection, hdSection, obsSection, unifiSection, liveSection, displaySection, pwSection);
     if (s.pco.hasSecret || s.pco.envCredentials || s.demo) loadServiceTypes();
     loadPlanChoices();
   }

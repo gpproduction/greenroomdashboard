@@ -15,6 +15,7 @@ import * as pp from './propresenter.js';
 import * as demo from './demo.js';
 import * as live from './live.js';
 import * as media from './media.js';
+import * as unifi from './unifi.js';
 import { buildRoster, assignmentChanges } from './roster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,14 @@ if (pco.isDemo() && !store.get().devices.length) {
 auth.bootstrapPassword();
 
 // --- dashboard payload ---------------------------------------------------------
+// Mark people who have badged in through UniFi Access today.
+function withArrivals(teams) {
+  return teams.map((t) => ({
+    ...t,
+    members: t.members.map((m) => ({ ...m, arrivedAt: unifi.arrivalFor(m.name)?.ts || null })),
+  }));
+}
+
 function dashboardState() {
   const db = store.get();
   const detail = sync.getActive();
@@ -54,7 +63,8 @@ function dashboardState() {
     plan: detail ? { ...detail.plan, items } : null,
     serverTime: Date.now(), // lets dashboards correct for clock drift on the live timer
     live: live.summary(detail, db),
-    teams: roster.teams,
+    teams: withArrivals(roster.teams),
+    unifi: unifi.getState(),
     conflicts: roster.conflicts,
     pco: sync.getStatus(),
   };
@@ -121,6 +131,7 @@ admin.get('/settings', (req, res) => {
     ...settings,
     pco: { ...settings.pco, secret: settings.pco.secret ? '••••••••' : '', hasSecret: Boolean(settings.pco.secret), envCredentials: Boolean(process.env.PCO_APP_ID) },
     obs: { ...settings.obs, password: settings.obs.password ? '••••••••' : '', hasPassword: Boolean(settings.obs.password) },
+    unifi: { ...settings.unifi, token: settings.unifi.token ? '••••••••' : '', hasToken: Boolean(settings.unifi.token) },
     admin: undefined,
     demo: pco.isDemo(),
   });
@@ -139,6 +150,11 @@ admin.put('/settings', (req, res) => {
     if (body.display) Object.assign(s.display, body.display);
     if (body.live) Object.assign(s.live, body.live);
     if (body.hyperdeck) Object.assign(s.hyperdeck, body.hyperdeck);
+    if (body.unifi) {
+      const { token, hasToken, ...rest } = body.unifi;
+      Object.assign(s.unifi, rest);
+      if (token !== undefined && !String(token).startsWith('••')) s.unifi.token = token.trim();
+    }
     if (body.obs) {
       const { password, hasPassword, ...rest } = body.obs;
       Object.assign(s.obs, rest);
@@ -149,6 +165,7 @@ admin.put('/settings', (req, res) => {
   if (body.propresenter) pp.kick();
   if (body.hyperdeck) media.restart(['hyperdeck']);
   if (body.obs) media.restart(['obs']);
+  if (body.unifi) unifi.restart();
   res.json({ ok: true });
 });
 
@@ -188,7 +205,7 @@ admin.get('/plans/:serviceTypeId/:planId', async (req, res) => {
     const detail = await sync.getPlanDetail(req.params.serviceTypeId, req.params.planId, { fresh: req.query.fresh === '1' });
     const roster = buildRoster(detail, store.get(), { forAdmin: true });
     const db = store.get();
-    res.json({ plan: detail.plan, items: detail.items, ...roster, live: db.live[detail.plan.id] || {}, liveCurrent: db.liveCurrent?.planId === detail.plan.id ? db.liveCurrent : null });
+    res.json({ plan: detail.plan, items: detail.items, ...roster, teams: withArrivals(roster.teams), live: db.live[detail.plan.id] || {}, liveCurrent: db.liveCurrent?.planId === detail.plan.id ? db.liveCurrent : null });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
@@ -364,6 +381,16 @@ admin.post('/obs/test', async (req, res) => {
   try { res.json(await media.testObs(cfg)); } catch (err) { res.status(400).json({ ok: false, error: err.message }); }
 });
 
+admin.post('/unifi/test', async (req, res) => {
+  const saved = store.get().settings.unifi;
+  const body = req.body || {};
+  const cfg = { ...saved, ...body, token: body.token && !body.token.startsWith('••') ? body.token.trim() : saved.token };
+  if (!cfg.host || !cfg.token) return res.status(400).json({ ok: false, error: 'Enter the UniFi console IP address and an API token' });
+  const detail = sync.getActive();
+  const names = detail ? [...new Set(detail.members.map((m) => m.name))] : [];
+  try { res.json(await unifi.test(cfg, names, store.get().settings.display.timezone)); } catch (err) { res.status(400).json({ ok: false, error: err.message }); }
+});
+
 admin.post('/propresenter/test', async (req, res) => {
   const cfg = { ...store.get().settings.propresenter, ...(req.body || {}) };
   if (pco.isDemo() && !cfg.host) return res.json({ ok: true, version: { name: 'Demo' }, timers: pp.getState().timers });
@@ -412,6 +439,7 @@ store.events.on('change', (topic) => { if (topic !== 'auth') scheduleStateBroadc
 sync.events.on('change', scheduleStateBroadcast);
 pp.events.on('change', (s) => broadcast('propresenter', s));
 media.events.on('change', (s) => broadcast('media', s));
+unifi.events.on('change', scheduleStateBroadcast);
 
 // --- start -------------------------------------------------------------------------
 server.listen(PORT, HOST, () => {
@@ -420,6 +448,7 @@ server.listen(PORT, HOST, () => {
   pp.start();
   live.start();
   media.start();
+  unifi.start();
 });
 
 function shutdown() {

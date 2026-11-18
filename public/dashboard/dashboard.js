@@ -88,12 +88,6 @@
       $('plan-meta').textContent = 'No upcoming plan';
     }
 
-    // Conflicts banner
-    const banner = $('banner');
-    if (state.conflicts?.length) {
-      banner.textContent = '⚠ Device conflict: ' + state.conflicts.map((c) => `${c.deviceName} → ${c.people.join(' & ')}`).join('   ·   ');
-      banner.classList.remove('hidden');
-    } else banner.classList.add('hidden');
 
     renderRoster();
     renderOrder();
@@ -103,10 +97,10 @@
     requestAnimationFrame(autoFit);
   }
 
-  function chip(label, dev, conflictIds) {
+  function chip(label, dev) {
     if (!dev) return null; // nothing assigned → no placeholder chip
     return el('span', {
-      class: 'chip' + (conflictIds.has(dev.id) ? ' conflict' : ''),
+      class: 'chip',
       title: [dev.kind, dev.frequency].filter(Boolean).join(' · '),
     }, el('span', { class: 'k' }, label), dev.name);
   }
@@ -125,7 +119,6 @@
   function renderRoster() {
     const root = $('roster');
     root.replaceChildren();
-    const conflictIds = new Set((state.conflicts || []).map((c) => c.deviceId));
     let teams = state.teams || [];
     if (teamFilter.length) teams = teams.filter((t) => teamFilter.includes(t.name.toLowerCase()));
 
@@ -142,12 +135,15 @@
       const members = team.members; // server only sends people with a mic or IEM
       root.append(el('div', { class: 'team' },
         el('h3', {}, team.name),
-        members.map((m) => el('div', { class: 'person' + (m.status === 'U' ? ' unconfirmed' : '') },
+        members.map((m) => el('div', { class: 'person' + (m.status === 'U' ? ' unconfirmed' : '') + (m.arrivedAt ? ' arrived' : '') },
           avatar(m),
           el('div', { class: 'who' },
-            el('div', { class: 'name' }, m.name),
+            el('div', { class: 'name-line' },
+              el('span', { class: 'name' }, m.name),
+              // Badged in through UniFi Access today
+              m.arrivedAt ? el('span', { class: 'arrived-tag' }, '✓ Arrived', el('span', { class: 'at' }, fmtTime(new Date(m.arrivedAt).toISOString()))) : null),
             el('div', { class: 'pos' }, m.positions.join(', '), m.status === 'U' ? el('span', { class: 'tag' }, 'unconfirmed') : null)),
-          el('div', { class: 'devices' }, chip('Mic', m.mic, conflictIds), chip('IEM', m.iem, conflictIds)),
+          el('div', { class: 'devices' }, chip('Mic', m.mic), chip('IEM', m.iem)),
         )),
       ));
     }
@@ -194,7 +190,9 @@
     const list = $('order');
     list.replaceChildren();
     const items = state.plan?.items || [];
-    if (!state.display.showOrderOfService || !items.length) { panel.classList.add('hidden'); return; }
+    const showOrder = state.display.showOrderOfService && items.length;
+    document.body.classList.toggle('no-order', !showOrder);
+    if (!showOrder) { panel.classList.add('hidden'); return; }
     panel.classList.remove('hidden');
 
     const live = state.live;
@@ -215,6 +213,7 @@
       status.replaceChildren(`${fmtTime(live.startsAt)} actual`);
     } else status.replaceChildren();
 
+    list.append(el('li', { class: 'cols' }, el('span', {}, 'Item'), el('span', {}, 'Leader'), el('span', {}, 'Time')));
     let plannedTotal = 0;
     let actualTotal = 0;
     for (const item of items) {
@@ -238,13 +237,14 @@
       list.append(el('li', { class: [isActive ? 'active' : '', isLive ? 'is-live' : '', item.position !== 'during' ? 'prepost' : ''].join(' ') },
         el('span', {},
           item.title, item.key ? el('span', { class: 'key' }, item.key) : null,
-          item.leader ? el('span', { class: 'leader' }, item.leader) : null,
           showDescription(item) ? el('span', { class: 'desc' }, item.description) : null),
+        el('span', { class: 'lead' }, item.leader || ''),
         timing));
     }
     if (hasActuals && actualTotal) {
       list.append(el('li', { class: 'total' },
         el('span', {}, 'Service so far'),
+        el('span', {}),
         el('span', { class: 'timing' },
           el('span', { class: 'actual' + (actualTotal > plannedTotal ? ' over' : ''), id: 'live-total' }, fmtDuration(actualTotal)),
           plannedTotal ? el('span', { class: 'len' }, `of ${fmtDuration(plannedTotal)}`) : null)));
@@ -270,6 +270,7 @@
     const panel = $('timers-panel');
     const box = $('timers');
     box.replaceChildren();
+    document.body.classList.toggle('no-timers', !state?.showTimers);
     if (!state?.showTimers) { panel.classList.add('hidden'); return; }
     panel.classList.remove('hidden');
     if (!pp.connected) {
@@ -286,7 +287,7 @@
       if (secs != null && secs < 0) cls = 'overrun';
       else if (t.state === 'running' && secs != null && secs <= 60) cls = 'warning';
       if (/overr/.test(t.state || '')) cls = 'overrun';
-      box.append(el('div', { class: `timer ${cls}` }, el('span', { class: 'name' }, t.name), el('span', { class: 'time' }, ppTime(t.time))));
+      box.append(el('div', { class: `timer ${cls}` }, el('div', { class: 'name' }, t.name), el('div', { class: 'time' }, ppTime(t.time))));
     }
   }
 
@@ -334,6 +335,8 @@
     set('status-pco', state?.pco?.ok ? 'ok' : 'bad', state?.pco?.error || (state?.pco?.lastSync ? `Last sync ${fmtTime(state.pco.lastSync)}` : ''));
     set('status-pp', !state?.showTimers ? 'off' : pp.connected ? 'ok' : 'bad', pp.error || '');
     set('status-ws', wsConnected ? 'ok' : 'bad');
+    const u = state?.unifi;
+    set('status-unifi', !u?.enabled ? 'hidden' : u.connected ? 'ok' : 'bad', u?.error || '');
   }
 
   // Shrink everything until the roster fits on one screen (no scrolling on a TV).

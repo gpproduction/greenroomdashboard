@@ -61,6 +61,11 @@ Open `http://<nas-ip>:8080/admin` from any computer on the church network.
    - Enter them here, click **Test connection**, choose the timers, then click **Save**.
 4. **Settings → HyperDeck** (optional): turn on Ethernet control on the HyperDeck, enter its IP address (port 9993), click **Test connection**, then click **Save**.
 5. **Settings → OBS** (optional): in OBS, go to *Tools → WebSocket Server Settings* and tick *Enable WebSocket server*. Use *Show Connect Info* for the IP address, port and password. Enter them here, click **Test connection**, then click **Save**.
+6. **Settings → UniFi Access** (optional):
+   - In UniFi Access, go to *Settings → General → Advanced → API Token* and create a token that can view system logs.
+   - Enter the UniFi console's IP (port 12445) and the token, then click **Test connection**. It lists today's door events and who they matched on this week's plan.
+   - Click **Save**.
+   - People are matched by name, so their UniFi Access names should match Planning Center.
 6. **Devices**: add your mics and IEMs, then pair them (**Pair mics and IEMs by list order**).
 7. **Assign**: assign this week's people.
 8. **Live → Start production test**: click through ProPresenter and confirm each item shows as matched and its time counts up. Then click **Stop test** and **Clear test times**.
