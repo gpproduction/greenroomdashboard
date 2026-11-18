@@ -6,6 +6,7 @@
 import https from 'node:https';
 import { EventEmitter } from 'node:events';
 import * as store from './store.js';
+import * as sync from './sync.js';
 
 export const events = new EventEmitter();
 
@@ -68,6 +69,29 @@ export function startOfDay(timeZone, now = Date.now()) {
     d.setHours(0, 0, 0, 0);
     return d.getTime();
   }
+}
+
+/**
+ * When arrivals start counting today: `leadMinutes` before the first rehearsal or
+ * service time of today (church time zone) in the current plan. Null when there are
+ * no plan times today, or it's still earlier than that.
+ */
+export function arrivalWindowStart(times, now, timeZone, leadMinutes = 60) {
+  let dayKey;
+  try {
+    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' });
+    dayKey = (ts) => fmt.format(ts);
+  } catch {
+    dayKey = (ts) => new Date(ts).toDateString();
+  }
+  const today = dayKey(now);
+  const starts = (times || [])
+    .filter((t) => t.type === 'service' || t.type === 'rehearsal')
+    .map((t) => Date.parse(t.startsAt))
+    .filter((ts) => ts && dayKey(ts) === today);
+  if (!starts.length) return null;
+  const from = Math.min(...starts) - leadMinutes * 60_000;
+  return now >= from ? from : null;
 }
 
 /** Turn door_openings log hits into a name-key → earliest-arrival map. */
@@ -162,9 +186,15 @@ async function poll() {
     publish({ enabled: Boolean(c.enabled), connected: false, error: c.enabled ? 'Enter the console IP and API token' : null }, new Map());
     return;
   }
+  // Only count badge-ins from an hour (configurable) before today's first rehearsal/service time.
+  const from = arrivalWindowStart(sync.getActive()?.plan?.times, Date.now(), tz, c.leadMinutes ?? 60);
+  if (from == null) {
+    publish({ enabled: true, connected: true, error: null, windowStart: null }, new Map());
+    return;
+  }
   try {
-    const hits = await fetchDoorOpenings(c, startOfDay(tz));
-    publish({ enabled: true, connected: true, error: null, lastPoll: new Date().toISOString(), events: hits.length }, buildArrivals(hits));
+    const hits = await fetchDoorOpenings(c, from);
+    publish({ enabled: true, connected: true, error: null, windowStart: from, lastPoll: new Date().toISOString(), events: hits.length }, buildArrivals(hits));
   } catch (err) {
     publish({ enabled: true, connected: false, error: err.message }); // keep last arrivals on a blip
   }
@@ -187,7 +217,8 @@ export async function test(c, planNames = [], timeZone) {
       matches: planNames.filter((n) => [...nameKeys(n)].some((k) => nameKeys(s.actor.display_name).has(k))),
     }));
   const matched = planNames.filter((n) => arrivalFor(n, map));
-  return { ok: true, events: hits.length, recent, matched };
+  const windowStart = arrivalWindowStart(sync.getActive()?.plan?.times, Date.now(), timeZone, c.leadMinutes ?? 60);
+  return { ok: true, events: hits.length, recent, matched, windowStart };
 }
 
 // ---- demo ------------------------------------------------------------------------------------

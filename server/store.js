@@ -48,7 +48,7 @@ function defaults() {
       },
       hyperdeck: { enabled: false, host: '', port: 9993 }, // Blackmagic HyperDeck Ethernet protocol
       obs: { enabled: false, host: '', port: 4455, password: '' }, // obs-websocket v5
-      unifi: { enabled: false, host: '', port: 12445, token: '' }, // UniFi Access developer API
+      unifi: { enabled: false, host: '', port: 12445, token: '', leadMinutes: 60 }, // UniFi Access developer API; arrivals count from leadMinutes before today's first rehearsal/service
       admin: { passwordHash: null },
     },
     devices: [], // { id, type: 'mic'|'iem', name, channel, frequency, kind, notes, active, linkedId }

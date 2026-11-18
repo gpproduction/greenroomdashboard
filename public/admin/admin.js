@@ -606,6 +606,33 @@
       }
     }
 
+    // Leader column: pick from the item-note columns actually used in the current plan.
+    const leaderBox = el('div', {}, el('span', { class: 'muted' }, 'Loading columns from Planning Center…'));
+    async function loadLeaderColumns() {
+      const chosen = () => String(s.pco.leaderNoteCategories || '').split(',').map((x) => x.trim()).filter(Boolean);
+      const setChosen = (list) => { s.pco.leaderNoteCategories = list.join(', '); };
+      let data = { categories: [] };
+      try { data = await api('/api/admin/pco/note-categories'); } catch { /* fall back to manual entry */ }
+      const names = new Set(data.categories.map((c) => c.name));
+      const manual = el('input', {
+        value: chosen().filter((c) => !names.has(c)).join(', '),
+        placeholder: 'Other column name(s), comma-separated',
+        oninput: (e) => setChosen([...chosen().filter((c) => names.has(c)), ...e.target.value.split(',').map((x) => x.trim()).filter(Boolean)]),
+      });
+      leaderBox.replaceChildren(
+        el('p', { class: 'help' }, `Which Planning Center item-note column holds who leads each item. These are the columns used in the current plan${data.plan ? ` (${data.plan})` : ''}:`),
+        data.categories.length
+          ? el('div', {}, data.categories.map((c) => el('label', { class: 'check', style: 'align-items:flex-start' },
+            el('input', {
+              type: 'checkbox',
+              checked: chosen().includes(c.name),
+              onchange: (e) => setChosen(e.target.checked ? [...chosen(), c.name] : chosen().filter((x) => x !== c.name)),
+            }),
+            el('span', {}, el('strong', {}, c.name), el('span', { class: 'help' }, ` — ${c.count} item(s), e.g. ${c.examples.join(' · ')}`)))))
+          : el('p', { class: 'muted' }, 'No item notes found in the current plan.'),
+        field('Not listed? Type the column name', manual));
+    }
+
     async function loadPlanChoices() {
       const { plans } = await api('/api/admin/plans').catch(() => ({ plans: [] }));
       planSel.replaceChildren(
@@ -643,9 +670,8 @@
         field('Plan', planSel, 'Automatic switches to the next plan two hours after the last service ends.'),
         field('Refresh every (seconds)', el('input', { type: 'number', min: 20, value: s.pco.pollSeconds, oninput: (e) => { s.pco.pollSeconds = Number(e.target.value); } }))),
       check('Hide people who declined', s.pco, 'hideDeclined'),
-      el('div', { class: 'grid2', style: 'margin-top:0.5rem' },
-        field('Item note category for the leader', el('input', { value: s.pco.leaderNoteCategories, oninput: (e) => { s.pco.leaderNoteCategories = e.target.value; } }),
-          'The item note column that holds who leads each item (yours is “Lead”). Separate several with commas.')),
+      el('h3', {}, 'Leader column'),
+      leaderBox,
       el('div', { class: 'row', style: 'margin-top:0.8rem' }, el('button', { class: 'primary', onclick: () => saveSection('pco') }, 'Save Planning Center settings')),
     );
 
@@ -824,7 +850,9 @@
       el('div', { class: 'grid2' },
         field('UniFi console IP address', el('input', { value: s.unifi.host, placeholder: '192.168.1.1', oninput: (e) => { s.unifi.host = e.target.value.trim(); } })),
         field('Port', el('input', { type: 'number', value: s.unifi.port, oninput: (e) => { s.unifi.port = Number(e.target.value); } }), 'Normally 12445'),
-        field('API token', el('input', { type: 'password', value: s.unifi.token, autocomplete: 'new-password', oninput: (e) => { s.unifi.token = e.target.value; } }))),
+        field('API token', el('input', { type: 'password', value: s.unifi.token, autocomplete: 'new-password', oninput: (e) => { s.unifi.token = e.target.value; } })),
+        field('Count arrivals from (minutes before)', el('input', { type: 'number', min: 0, max: 240, value: s.unifi.leadMinutes ?? 60, oninput: (e) => { s.unifi.leadMinutes = Number(e.target.value); } }),
+          'Badge-ins count from this long before the first rehearsal or service time of the day. Days with no plan times show no arrivals.')),
       el('div', { class: 'row', style: 'margin-top:0.6rem' },
         el('button', {
           onclick: async () => {
@@ -833,7 +861,10 @@
             try {
               const r = await api('/api/admin/unifi/test', { method: 'POST', body: { host: s.unifi.host, port: s.unifi.port, token: s.unifi.token } });
               unifiResult.replaceChildren(
-                el('div', { class: 'ok-text' }, `✓ Connected — ${r.events} door event(s) today. ${r.matched.length} person(s) on this week's plan have arrived${r.matched.length ? `: ${r.matched.join(', ')}` : ''}.`),
+                el('div', { class: 'ok-text' }, `✓ Connected — ${r.events} door event(s) today. ${r.matched.length} person(s) on this week's plan badged in today${r.matched.length ? `: ${r.matched.join(', ')}` : ''}.`),
+                el('div', { class: 'help' }, r.windowStart
+                  ? `Arrivals on the dashboard count from ${new Date(r.windowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: churchTz() })} today.`
+                  : 'No arrivals are shown right now: there is no rehearsal or service time today, or it is still more than the lead time before the first one.'),
                 r.recent.length ? el('table', { style: 'margin-top:0.5rem' },
                   el('thead', {}, el('tr', {}, ['Name in UniFi', 'Time', 'Door', 'Result', 'Matches plan'].map((h) => el('th', {}, h)))),
                   el('tbody', {}, r.recent.map((e) => el('tr', {},
@@ -864,6 +895,7 @@
     root.replaceChildren(pcoSection, ppSection, hdSection, obsSection, unifiSection, liveSection, displaySection, pwSection);
     if (s.pco.hasSecret || s.pco.envCredentials || s.demo) loadServiceTypes();
     loadPlanChoices();
+    loadLeaderColumns();
   }
 
   boot().catch((err) => toast(err.message, true));

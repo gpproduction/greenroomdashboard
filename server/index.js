@@ -188,6 +188,22 @@ admin.post('/pco/test', async (req, res) => {
 admin.get('/pco/service-types', async (req, res) => {
   try { res.json(await pco.listServiceTypes()); } catch (err) { res.status(502).json({ error: err.message }); }
 });
+// Item-note columns used in the current plan (e.g. Lead, Sound, Projection) with examples,
+// so the Leader column can be picked from real data rather than typed.
+admin.get('/pco/note-categories', (req, res) => {
+  const detail = sync.getActive();
+  const cats = new Map();
+  for (const item of detail?.items || []) {
+    for (const n of item.notes || []) {
+      if (!cats.has(n.category)) cats.set(n.category, { name: n.category, count: 0, examples: [] });
+      const c = cats.get(n.category);
+      c.count += 1;
+      if (c.examples.length < 3) c.examples.push(`${item.title}: ${String(n.content).trim().slice(0, 40)}`);
+    }
+  }
+  res.json({ plan: detail ? detail.plan.dates : null, categories: [...cats.values()].sort((a, b) => a.name.localeCompare(b.name)) });
+});
+
 admin.get('/pco/teams', async (req, res) => {
   const ids = String(req.query.serviceTypeIds || '').split(',').filter(Boolean);
   try { res.json(await pco.listTeams(ids.length ? ids : store.get().settings.pco.serviceTypeIds)); } catch (err) { res.status(502).json({ error: err.message }); }

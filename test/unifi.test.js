@@ -36,3 +36,25 @@ test('startOfDay uses the church time zone', () => {
   assert.equal(startOfDay('America/New_York', now), Date.UTC(2026, 10, 22, 5, 0));
   assert.ok(nameKeys('').size === 0);
 });
+
+import { arrivalWindowStart } from '../server/unifi.js';
+
+test('arrivals count from 1h before the first rehearsal/service time today', () => {
+  const NY = 'America/New_York';
+  const iso = (h, m = 0, d = 22) => new Date(Date.UTC(2026, 10, d, h, m)).toISOString(); // UTC; NY = UTC-5
+  const times = [
+    { type: 'rehearsal', startsAt: iso(23, 30, 18) }, // Wed 6:30 PM NY
+    { type: 'rehearsal', startsAt: iso(12, 45) }, // Sun 7:45 AM sound check
+    { type: 'service', startsAt: iso(14) }, // Sun 9:00
+    { type: 'service', startsAt: iso(16) }, // Sun 11:00
+    { type: 'other', startsAt: iso(11) }, // ignored
+  ];
+  const at = (h, m = 0, d = 22) => Date.UTC(2026, 10, d, h, m);
+  assert.equal(arrivalWindowStart(times, at(11, 30), NY), null); // 6:30 AM — too early
+  assert.equal(arrivalWindowStart(times, at(11, 50), NY), at(11, 45)); // from 6:45 AM (sound check − 1h)
+  assert.equal(arrivalWindowStart(times, at(17), NY), at(11, 45)); // still counting at noon
+  assert.equal(arrivalWindowStart(times, at(23, 0, 18), NY), at(22, 30, 18)); // Wed rehearsal: from 5:30 PM
+  assert.equal(arrivalWindowStart(times, at(17, 0, 19), NY), null); // Thursday: nothing scheduled
+  assert.equal(arrivalWindowStart(times, at(12, 0), NY, 30), null); // 7:00 AM, 30-min lead opens at 7:15
+  assert.equal(arrivalWindowStart(times, at(12, 30), NY, 30), at(12, 15)); // custom lead time
+});
