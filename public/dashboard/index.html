@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Green Room</title>
+  <link rel="stylesheet" href="/dashboard/dashboard.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="title" id="title">Green Room</div>
+      <div class="plan" id="plan-meta">Loading…</div>
+    </div>
+    <div class="countdown" id="service-countdown"></div>
+    <div class="clock" id="clock"></div>
+  </header>
+
+  <div class="banner hidden" id="banner"></div>
+
+  <main id="main">
+    <section class="roster" id="roster"></section>
+    <aside class="side" id="side">
+      <section class="panel timers" id="timers-panel">
+        <h2>Timers</h2>
+        <div id="timers"></div>
+      </section>
+      <section class="panel order" id="order-panel">
+        <h2>Order of Service</h2>
+        <ol id="order"></ol>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="status">
+    <span id="status-pco"><i class="dot"></i>Planning Center</span>
+    <span id="status-pp"><i class="dot"></i>ProPresenter</span>
+    <span id="status-ws"><i class="dot"></i>Live</span>
+  </footer>
+
+  <script src="/dashboard/dashboard.js"></script>
+</body>
+</html>

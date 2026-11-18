@@ -1,0 +1,534 @@
+/* Green Room admin — assignments, device inventory, integrations. */
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  function el(tag, attrs = {}, ...children) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') node.className = v;
+      else if (k === 'style') node.style.cssText = v;
+      else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+      else if (k === 'value') node.value = v;
+      else if (k === 'checked' || k === 'selected' || k === 'disabled') node[k] = Boolean(v);
+      else node.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of children.flat()) if (c != null && c !== false) node.append(c instanceof Node ? c : String(c));
+    return node;
+  }
+
+  let toastTimer;
+  function toast(msg, isError = false) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (isError ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.add('hidden'), isError ? 5000 : 2000);
+  }
+
+  async function api(path, { method = 'GET', body } = {}) {
+    const res = await fetch(path, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401 && !path.startsWith('/api/auth')) { showLogin(); throw new Error('Signed out'); }
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    return data;
+  }
+
+  // ---- auth ------------------------------------------------------------------
+  let setupMode = false;
+  async function boot() {
+    const s = await api('/api/auth/status');
+    if (s.signedIn) return startApp();
+    showLogin(!s.configured);
+  }
+
+  function showLogin(firstRun = setupMode) {
+    setupMode = firstRun;
+    $('app').classList.add('hidden');
+    $('login').classList.remove('hidden');
+    $('login-confirm').classList.toggle('hidden', !firstRun);
+    $('login-confirm').required = firstRun;
+    $('login-submit').textContent = firstRun ? 'Create password' : 'Sign in';
+    $('login-hint').textContent = firstRun ? 'First time here: choose an admin password.' : '';
+    $('login-password').focus();
+  }
+
+  $('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('login-error').textContent = '';
+    const password = $('login-password').value;
+    try {
+      if (setupMode) {
+        if (password !== $('login-confirm').value) throw new Error('Passwords do not match');
+        await api('/api/auth/setup', { method: 'POST', body: { password } });
+      } else {
+        await api('/api/auth/login', { method: 'POST', body: { password } });
+      }
+      $('login-password').value = '';
+      $('login-confirm').value = '';
+      startApp();
+    } catch (err) {
+      $('login-error').textContent = err.message;
+    }
+  });
+
+  $('logout').addEventListener('click', async () => {
+    await api('/api/auth/logout', { method: 'POST' });
+    showLogin(false);
+  });
+
+  // ---- tabs --------------------------------------------------------------------
+  let currentTab = 'assign';
+  const renderers = { assign: renderAssign, devices: renderDevices, settings: renderSettings };
+  $('tabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('button')?.dataset.tab;
+    if (!tab) return;
+    switchTab(tab);
+  });
+  function switchTab(tab) {
+    currentTab = tab;
+    for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('active', b.dataset.tab === tab);
+    for (const name of Object.keys(renderers)) $(`tab-${name}`).classList.toggle('hidden', name !== tab);
+    location.hash = tab;
+    renderers[tab]();
+  }
+
+  let settings = null;
+  async function startApp() {
+    $('login').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    settings = await api('/api/admin/settings');
+    $('demo-note').classList.toggle('hidden', !settings.demo);
+    const fromHash = location.hash.slice(1);
+    switchTab(renderers[fromHash] ? fromHash : (settings.pco.hasSecret || settings.pco.envCredentials || settings.demo ? 'assign' : 'settings'));
+  }
+
+  // ---- Assign tab ------------------------------------------------------------------
+  let selectedPlan = null; // { id, serviceTypeId }
+  let devices = [];
+
+  async function renderAssign() {
+    const root = $('tab-assign');
+    root.replaceChildren(el('p', { class: 'muted' }, 'Loading plans…'));
+    let plansRes;
+    try {
+      [plansRes, devices] = await Promise.all([api('/api/admin/plans'), api('/api/admin/devices')]);
+    } catch (err) {
+      root.replaceChildren(el('div', { class: 'section' }, el('p', { class: 'error' }, err.message)));
+      return;
+    }
+    const { plans, activeId, status } = plansRes;
+
+    if (!plans.length) {
+      root.replaceChildren(el('div', { class: 'section' },
+        el('h2', {}, 'No upcoming plans'),
+        el('p', { class: 'muted' }, status.error || 'Planning Center returned no upcoming plans for the selected service types.'),
+        el('button', { class: 'primary', onclick: () => switchTab('settings') }, 'Go to settings')));
+      return;
+    }
+
+    if (!selectedPlan || !plans.some((p) => p.id === selectedPlan.id)) {
+      const p = plans.find((x) => x.id === activeId) || plans[0];
+      selectedPlan = { id: p.id, serviceTypeId: p.serviceTypeId };
+    }
+
+    const select = el('select', {
+      onchange: (e) => {
+        const p = plans.find((x) => x.id === e.target.value);
+        selectedPlan = { id: p.id, serviceTypeId: p.serviceTypeId };
+        loadPlan();
+      },
+    }, plans.map((p) => el('option', { value: p.id, selected: p.id === selectedPlan.id },
+      `${p.dates} — ${p.serviceTypeName}${p.title ? ` — ${p.title}` : p.seriesTitle ? ` — ${p.seriesTitle}` : ''}${p.id === activeId ? '  (on dashboard)' : ''}`)));
+
+    const planBody = el('div', { id: 'plan-body' });
+    root.replaceChildren(
+      el('div', { class: 'plan-bar' },
+        select,
+        el('button', { onclick: () => loadPlan(true) }, '↻ Refresh from Planning Center'),
+        el('span', { class: 'muted help' }, status.lastSync ? `Last sync ${new Date(status.lastSync).toLocaleTimeString()}` : ''),
+      ),
+      planBody,
+    );
+    loadPlan();
+
+    async function loadPlan(fresh = false) {
+      planBody.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
+      try {
+        const data = await api(`/api/admin/plans/${selectedPlan.serviceTypeId}/${selectedPlan.id}${fresh ? '?fresh=1' : ''}`);
+        renderPlan(planBody, data, plans.find((p) => p.id === selectedPlan.id), activeId, () => loadPlan());
+        if (fresh) toast('Refreshed from Planning Center');
+      } catch (err) {
+        planBody.replaceChildren(el('div', { class: 'section' }, el('p', { class: 'error' }, err.message)));
+      }
+    }
+  }
+
+  function deviceOptions(type, current, usedBy) {
+    const list = devices.filter((d) => d.type === type && (d.active || d.id === current));
+    return [
+      el('option', { value: '' }, '—'),
+      ...list.map((d) => {
+        const other = usedBy.get(d.id);
+        return el('option', { value: d.id, selected: d.id === current }, `${d.name}${d.channel ? ` (ch ${d.channel})` : ''}${other ? `  · in use: ${other}` : ''}`);
+      }),
+    ];
+  }
+
+  function renderPlan(root, data, meta, activeId, reload) {
+    const { plan, teams, conflicts } = data;
+    const conflictIds = new Set(conflicts.map((c) => c.deviceId));
+
+    // device -> who has it (for the "in use" hint)
+    const usage = new Map();
+    for (const t of teams) for (const m of t.members) for (const f of ['mic', 'iem']) if (m[f]) usage.set(m[f].id, m.name);
+
+    const header = el('div', { class: 'section' },
+      el('div', { class: 'row' },
+        el('h2', { style: 'margin:0' }, `${plan.dates}${plan.title ? ` · ${plan.title}` : ''}`),
+        plan.id === activeId ? el('span', { class: 'badge live' }, 'Showing on dashboard') : el('span', { class: 'badge' }, 'Not on dashboard'),
+        el('a', { href: plan.url, target: '_blank', rel: 'noopener' }, 'Open in Planning Center ↗'),
+      ),
+      el('p', { class: 'help' }, 'Assignments save instantly and appear on the dashboard within a second. Each person\'s choice is remembered and pre-fills future plans (marked “auto”).'),
+      meta?.times?.length ? el('p', { class: 'help' }, meta.times.map((t) => `${t.name || (t.type === 'service' ? 'Service' : t.type)} ${new Date(t.startsAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`).join(' · ')) : null,
+    );
+
+    const conflictBox = conflicts.length ? el('div', { class: 'section conflicts' },
+      el('h2', {}, 'Conflicts'),
+      el('ul', {}, conflicts.map((c) => el('li', {}, `${c.deviceName} is assigned to ${c.people.join(' and ')}`)))) : null;
+
+    const blocks = teams.map((team) => {
+      const rows = team.members.map((m) => {
+        const cell = (field) => {
+          const current = m[field]?.id || '';
+          const others = new Map([...usage].filter(([id, name]) => name !== m.name && id));
+          const sel = el('select', {
+            onchange: async (e) => {
+              try {
+                await api(`/api/admin/plans/${plan.id}/assignments/${encodeURIComponent(m.key)}`, { method: 'PUT', body: { field, deviceId: e.target.value || null } });
+                toast(`Saved ${m.name}`);
+                reload();
+              } catch (err) { toast(err.message, true); }
+            },
+          }, deviceOptions(field, current, others));
+          return el('td', { class: current && conflictIds.has(current) ? 'conflict' : '' },
+            sel,
+            m[field]?.source === 'default' ? el('div', { class: 'source-default' }, 'auto (remembered)') : null);
+        };
+        return el('tr', {},
+          el('td', {},
+            el('div', { class: 'person-name' }, m.name, m.status === 'U' ? el('span', { class: 'status-U' }, '  unconfirmed') : null),
+            el('div', { class: 'help' }, m.positions.join(', ')),
+            m.extra ? el('button', {
+              class: 'small danger',
+              onclick: async () => { await api(`/api/admin/plans/${plan.id}/extras/${encodeURIComponent(m.key)}`, { method: 'DELETE' }); reload(); },
+            }, 'Remove') : null),
+          cell('mic'),
+          cell('iem'));
+      });
+      return el('div', { class: 'section team-block' + (team.inFilter ? '' : ' dim') },
+        el('div', { class: 'team-head' }, el('h3', {}, team.name), team.inFilter ? null : el('span', { class: 'badge' }, 'hidden on dashboard')),
+        el('div', { class: 'table-wrap' }, el('table', { class: 'assign-table' },
+          el('thead', {}, el('tr', {}, el('th', { style: 'width:40%' }, 'Person'), el('th', {}, 'Mic'), el('th', {}, 'IEM'))),
+          el('tbody', {}, rows))));
+    });
+
+    const guestName = el('input', { placeholder: 'Name (e.g. Guest Speaker)' });
+    const guestRole = el('input', { placeholder: 'Role' });
+    const guests = el('div', { class: 'section' },
+      el('h2', {}, 'Add someone not in Planning Center'),
+      el('form', {
+        class: 'row',
+        onsubmit: async (e) => {
+          e.preventDefault();
+          try {
+            await api(`/api/admin/plans/${plan.id}/extras`, { method: 'POST', body: { name: guestName.value, role: guestRole.value } });
+            reload();
+          } catch (err) { toast(err.message, true); }
+        },
+      }, guestName, guestRole, el('button', { class: 'primary', type: 'submit' }, 'Add')),
+    );
+
+    const reset = el('div', { class: 'row' },
+      el('button', {
+        class: 'danger',
+        onclick: async () => {
+          if (!confirm('Clear this plan\'s manual changes and go back to everyone\'s remembered defaults?')) return;
+          await api(`/api/admin/plans/${plan.id}/reset`, { method: 'POST' });
+          reload();
+        },
+      }, 'Reset this plan to defaults'));
+
+    if (!devices.length) {
+      root.replaceChildren(header, el('div', { class: 'section' },
+        el('p', {}, 'You have no microphones or IEMs yet.'),
+        el('button', { class: 'primary', onclick: () => switchTab('devices') }, 'Add devices')));
+      return;
+    }
+    root.replaceChildren(header, conflictBox || '', ...blocks, guests, reset);
+  }
+
+  // ---- Devices tab -------------------------------------------------------------------
+  async function renderDevices() {
+    const root = $('tab-devices');
+    devices = await api('/api/admin/devices');
+
+    const saveTimers = new Map();
+    const save = (d, patch) => {
+      Object.assign(d, patch);
+      clearTimeout(saveTimers.get(d.id));
+      saveTimers.set(d.id, setTimeout(async () => {
+        try { await api(`/api/admin/devices/${d.id}`, { method: 'PUT', body: d }); toast('Saved'); } catch (err) { toast(err.message, true); }
+      }, 400));
+    };
+    const move = async (d, dir) => {
+      const i = devices.indexOf(d);
+      const j = i + dir;
+      if (j < 0 || j >= devices.length) return;
+      [devices[i], devices[j]] = [devices[j], devices[i]];
+      await api('/api/admin/devices-order', { method: 'PUT', body: { ids: devices.map((x) => x.id) } });
+      renderDevices();
+    };
+
+    const table = (type, label) => {
+      const list = devices.filter((d) => d.type === type);
+      return el('div', { class: 'section' },
+        el('div', { class: 'row', style: 'justify-content:space-between' },
+          el('h2', { style: 'margin:0' }, `${label} (${list.length})`),
+          el('button', {
+            class: 'primary',
+            onclick: async () => {
+              const n = list.length + 1;
+              await api('/api/admin/devices', { method: 'POST', body: { type, name: type === 'mic' ? `Mic ${n}` : `IEM ${n}`, channel: String(n) } });
+              renderDevices();
+            },
+          }, `+ Add ${type === 'mic' ? 'mic' : 'IEM'}`)),
+        list.length ? el('div', { class: 'table-wrap' }, el('table', { class: 'devices-table' },
+          el('thead', {}, el('tr', {}, ['', 'Color', 'Name', 'Channel', 'Frequency', 'Type / model', 'Notes', 'Active', ''].map((h) => el('th', {}, h)))),
+          el('tbody', {}, list.map((d) => el('tr', {},
+            el('td', { style: 'white-space:nowrap' },
+              el('button', { class: 'small ghost', title: 'Move up', onclick: () => move(d, -1) }, '↑'),
+              el('button', { class: 'small ghost', title: 'Move down', onclick: () => move(d, 1) }, '↓')),
+            el('td', {}, el('input', { type: 'color', value: d.color || '#888888', oninput: (e) => save(d, { color: e.target.value }) })),
+            el('td', {}, el('input', { value: d.name, oninput: (e) => save(d, { name: e.target.value }) })),
+            el('td', { style: 'width:6rem' }, el('input', { value: d.channel, oninput: (e) => save(d, { channel: e.target.value }) })),
+            el('td', {}, el('input', { value: d.frequency, placeholder: 'e.g. 518.250 MHz', oninput: (e) => save(d, { frequency: e.target.value }) })),
+            el('td', {}, el('input', { value: d.kind, placeholder: type === 'mic' ? 'Handheld / Headset' : 'Pack / Wired', oninput: (e) => save(d, { kind: e.target.value }) })),
+            el('td', {}, el('input', { value: d.notes, oninput: (e) => save(d, { notes: e.target.value }) })),
+            el('td', {}, el('input', { type: 'checkbox', checked: d.active, onchange: (e) => save(d, { active: e.target.checked }) })),
+            el('td', {}, el('button', {
+              class: 'small danger',
+              onclick: async () => {
+                if (!confirm(`Delete ${d.name}? It will be unassigned everywhere.`)) return;
+                await api(`/api/admin/devices/${d.id}`, { method: 'DELETE' });
+                renderDevices();
+              },
+            }, 'Delete')),
+          ))))) : el('p', { class: 'muted' }, 'None yet.'));
+    };
+
+    root.replaceChildren(
+      el('p', { class: 'help' }, 'Your wireless inventory. Colors show on the dashboard so people can match their pack/mic at a glance. Untick “Active” for gear that is out for repair.'),
+      table('mic', 'Microphones'),
+      table('iem', 'In-ear monitors'),
+    );
+  }
+
+  // ---- Settings tab -------------------------------------------------------------------
+  async function renderSettings() {
+    const root = $('tab-settings');
+    settings = await api('/api/admin/settings');
+    const s = structuredClone(settings);
+
+    const field = (label, input, help) => el('label', { class: 'field' }, el('span', {}, label), input, help ? el('div', { class: 'help' }, help) : null);
+    const check = (label, obj, key) => el('label', { class: 'check' }, el('input', { type: 'checkbox', checked: obj[key], onchange: (e) => { obj[key] = e.target.checked; } }), label);
+
+    async function saveSection(section) {
+      try {
+        await api('/api/admin/settings', { method: 'PUT', body: { [section]: s[section] } });
+        toast('Settings saved');
+        settings = await api('/api/admin/settings');
+      } catch (err) { toast(err.message, true); }
+    }
+
+    // Planning Center ---------------------------------------------------------------
+    const appId = el('input', { value: s.pco.appId, placeholder: 'Application ID', autocomplete: 'off', oninput: (e) => { s.pco.appId = e.target.value.trim(); } });
+    const secret = el('input', { type: 'password', value: s.pco.secret, placeholder: 'Secret', autocomplete: 'new-password', oninput: (e) => { s.pco.secret = e.target.value.trim(); } });
+    const pcoResult = el('span', { class: 'help' });
+    const stBox = el('div', { class: 'checklist' }, el('span', { class: 'muted' }, 'Connect to load service types…'));
+    const teamBox = el('div', {}, el('span', { class: 'muted' }, 'Pick service types to load teams…'));
+    const planSel = el('select', { onchange: (e) => { s.pco.planSelection = e.target.value; s.pco.pinnedServiceTypeId = e.target.selectedOptions[0]?.dataset.st || null; } });
+
+    async function loadServiceTypes() {
+      try {
+        const types = await api('/api/admin/pco/service-types');
+        stBox.replaceChildren(...types.map((t) => el('label', { class: 'check' },
+          el('input', {
+            type: 'checkbox',
+            checked: s.pco.serviceTypeIds.includes(t.id),
+            onchange: (e) => {
+              s.pco.serviceTypeIds = e.target.checked ? [...s.pco.serviceTypeIds, t.id] : s.pco.serviceTypeIds.filter((x) => x !== t.id);
+              loadTeams();
+            },
+          }), t.name)));
+        loadTeams();
+      } catch (err) {
+        stBox.replaceChildren(el('span', { class: 'error' }, err.message));
+      }
+    }
+
+    async function loadTeams() {
+      if (!s.pco.serviceTypeIds.length) { teamBox.replaceChildren(el('span', { class: 'muted' }, 'Pick service types to load teams…')); return; }
+      try {
+        const teams = await api(`/api/admin/pco/teams?serviceTypeIds=${s.pco.serviceTypeIds.join(',')}`);
+        const byId = new Map(teams.map((t) => [t.id, t]));
+        s.pco.teamIds = s.pco.teamIds.filter((id) => byId.has(id));
+        const draw = () => {
+          const chosen = s.pco.teamIds.map((id) => byId.get(id));
+          const rest = teams.filter((t) => !s.pco.teamIds.includes(t.id));
+          teamBox.replaceChildren(
+            el('div', { class: 'help' }, 'Ticked teams appear on the dashboard in this order. Leave all unticked to show every team.'),
+            ...chosen.map((t, i) => el('div', { class: 'check' },
+              el('input', { type: 'checkbox', checked: true, onchange: () => { s.pco.teamIds = s.pco.teamIds.filter((x) => x !== t.id); draw(); } }),
+              el('span', { style: 'flex:1' }, t.name),
+              el('button', { class: 'small ghost', disabled: i === 0, onclick: () => { const a = s.pco.teamIds; [a[i - 1], a[i]] = [a[i], a[i - 1]]; draw(); } }, '↑'),
+              el('button', { class: 'small ghost', disabled: i === chosen.length - 1, onclick: () => { const a = s.pco.teamIds; [a[i + 1], a[i]] = [a[i], a[i + 1]]; draw(); } }, '↓'))),
+            ...rest.map((t) => el('label', { class: 'check' },
+              el('input', { type: 'checkbox', onchange: () => { s.pco.teamIds = [...s.pco.teamIds, t.id]; draw(); } }), t.name)),
+          );
+        };
+        draw();
+      } catch (err) {
+        teamBox.replaceChildren(el('span', { class: 'error' }, err.message));
+      }
+    }
+
+    async function loadPlanChoices() {
+      const { plans } = await api('/api/admin/plans').catch(() => ({ plans: [] }));
+      planSel.replaceChildren(
+        el('option', { value: 'auto', selected: s.pco.planSelection === 'auto' }, 'Automatic — next/current plan'),
+        ...plans.map((p) => el('option', { value: p.id, 'data-st': p.serviceTypeId, selected: s.pco.planSelection === p.id }, `Pin: ${p.dates} — ${p.serviceTypeName}`)),
+      );
+    }
+
+    const pcoSection = el('div', { class: 'section' },
+      el('h2', {}, 'Planning Center'),
+      s.pco.envCredentials ? el('p', { class: 'help' }, 'Credentials are provided by the server environment (PCO_APP_ID / PCO_SECRET).') : el('div', {},
+        el('p', { class: 'help' }, 'Create a Personal Access Token at ', el('a', { href: 'https://api.planningcenteronline.com/oauth/applications', target: '_blank', rel: 'noopener' }, 'api.planningcenteronline.com/oauth/applications'), ' (signed in as someone with Services access), then paste the Application ID and Secret here.'),
+        el('div', { class: 'grid2' }, field('Application ID', appId), field('Secret', secret))),
+      el('div', { class: 'row', style: 'margin-top:0.7rem' },
+        el('button', {
+          onclick: async () => {
+            pcoResult.textContent = 'Testing…';
+            try {
+              const r = await api('/api/admin/pco/test', { method: 'POST', body: { appId: s.pco.appId, secret: s.pco.secret } });
+              pcoResult.textContent = `✓ Connected to ${r.organization}`;
+              pcoResult.className = 'help ok-text';
+              await api('/api/admin/settings', { method: 'PUT', body: { pco: { appId: s.pco.appId, secret: s.pco.secret } } });
+              loadServiceTypes();
+            } catch (err) {
+              pcoResult.textContent = err.message;
+              pcoResult.className = 'help error';
+            }
+          },
+        }, 'Test & connect'),
+        pcoResult),
+      el('h3', {}, 'Service types to pull plans from'), stBox,
+      el('h3', {}, 'Teams on the dashboard'), teamBox,
+      el('h3', {}, 'Which plan is shown'),
+      el('div', { class: 'grid2' },
+        field('Plan', planSel, 'Automatic switches to the next plan two hours after the last service ends.'),
+        field('Refresh every (seconds)', el('input', { type: 'number', min: 20, value: s.pco.pollSeconds, oninput: (e) => { s.pco.pollSeconds = Number(e.target.value); } }))),
+      check('Hide people who declined', s.pco, 'hideDeclined'),
+      el('div', { class: 'row', style: 'margin-top:0.8rem' }, el('button', { class: 'primary', onclick: () => saveSection('pco') }, 'Save Planning Center settings')),
+    );
+
+    // ProPresenter -------------------------------------------------------------------
+    const ppResult = el('div', { class: 'help' });
+    const timerBox = el('div', {});
+    const drawTimers = (timers) => {
+      if (!timers?.length) { timerBox.replaceChildren(); return; }
+      timerBox.replaceChildren(
+        el('h3', {}, 'Timers to show'),
+        el('div', { class: 'help' }, 'Leave all unticked to show every timer.'),
+        el('div', { class: 'checklist' }, timers.map((t) => el('label', { class: 'check' },
+          el('input', {
+            type: 'checkbox',
+            checked: s.propresenter.timerIds.includes(t.id),
+            onchange: (e) => { s.propresenter.timerIds = e.target.checked ? [...s.propresenter.timerIds, t.id] : s.propresenter.timerIds.filter((x) => x !== t.id); },
+          }), `${t.name}  (${t.time})`))));
+    };
+    const ppSection = el('div', { class: 'section' },
+      el('h2', {}, 'ProPresenter'),
+      el('p', { class: 'help' }, 'In ProPresenter 7 open Settings → Network, tick “Enable Network”, and note the IP address and port shown there. This server must be on the same network.'),
+      check('Connect to ProPresenter', s.propresenter, 'enabled'),
+      el('div', { class: 'grid2' },
+        field('Host / IP address', el('input', { value: s.propresenter.host, placeholder: '192.168.1.50', oninput: (e) => { s.propresenter.host = e.target.value.trim(); } })),
+        field('Port', el('input', { type: 'number', value: s.propresenter.port, oninput: (e) => { s.propresenter.port = Number(e.target.value); } }))),
+      check('Highlight the current item in the order of service', s.propresenter, 'showActiveItem'),
+      el('div', { class: 'row', style: 'margin-top:0.6rem' },
+        el('button', {
+          onclick: async () => {
+            ppResult.textContent = 'Testing…';
+            ppResult.className = 'help';
+            try {
+              const r = await api('/api/admin/propresenter/test', { method: 'POST', body: { host: s.propresenter.host, port: s.propresenter.port } });
+              ppResult.textContent = `✓ Connected${r.version?.name ? ` to ${r.version.name}` : ''}${r.version?.host_description ? ` (${r.version.host_description})` : ''} — ${r.timers.length} timer(s) found`;
+              ppResult.className = 'help ok-text';
+              drawTimers(r.timers);
+            } catch (err) {
+              ppResult.textContent = err.message;
+              ppResult.className = 'help error';
+            }
+          },
+        }, 'Test connection'),
+        el('button', { class: 'primary', onclick: () => saveSection('propresenter') }, 'Save ProPresenter settings')),
+      ppResult,
+      timerBox,
+    );
+
+    // Display ---------------------------------------------------------------------------
+    const origin = location.origin;
+    const displaySection = el('div', { class: 'section' },
+      el('h2', {}, 'Dashboard display'),
+      el('div', { class: 'grid2' },
+        field('Title', el('input', { value: s.display.title, oninput: (e) => { s.display.title = e.target.value; } })),
+        field('Time zone', el('input', { value: s.display.timezone, oninput: (e) => { s.display.timezone = e.target.value.trim(); } }), 'IANA name, e.g. America/New_York'),
+        field('Full page reload every (hours)', el('input', { type: 'number', min: 0, value: s.display.reloadHours, oninput: (e) => { s.display.reloadHours = Number(e.target.value); } }), '0 = never. Live updates happen instantly regardless.')),
+      check('Show ProPresenter timers', s.display, 'showTimers'),
+      check('Show order of service', s.display, 'showOrderOfService'),
+      check('Show countdown to the next service time', s.display, 'showServiceCountdown'),
+      check('Show people with no mic or IEM assigned', s.display, 'showUnassigned'),
+      el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('display') }, 'Save display settings')),
+      el('h3', {}, 'Dashboard links'),
+      el('ul', { class: 'help' },
+        el('li', {}, el('code', {}, `${origin}/dashboard/`), ' — everything'),
+        el('li', {}, el('code', {}, `${origin}/dashboard/?layout=timers`), ' — big timers only (stage/greenroom clock)'),
+        el('li', {}, el('code', {}, `${origin}/dashboard/?layout=roster`), ' — mic/IEM list only'),
+        el('li', {}, el('code', {}, `${origin}/dashboard/?teams=Worship Team`), ' — only certain teams (comma-separated)'),
+        el('li', {}, 'Add ', el('code', {}, '&scale=1.3'), ' to make text larger on a distant TV.')),
+    );
+
+    // Password -----------------------------------------------------------------------------
+    const cur = el('input', { type: 'password', autocomplete: 'current-password' });
+    const next = el('input', { type: 'password', autocomplete: 'new-password' });
+    const pwSection = el('div', { class: 'section' },
+      el('h2', {}, 'Admin password'),
+      el('div', { class: 'grid2' }, field('Current password', cur), field('New password', next)),
+      el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', {
+        onclick: async () => {
+          try { await api('/api/admin/password', { method: 'POST', body: { current: cur.value, next: next.value } }); toast('Password changed'); cur.value = ''; next.value = ''; } catch (err) { toast(err.message, true); }
+        },
+      }, 'Change password')));
+
+    root.replaceChildren(pcoSection, ppSection, displaySection, pwSection);
+    if (s.pco.hasSecret || s.pco.envCredentials || s.demo) loadServiceTypes();
+    loadPlanChoices();
+  }
+
+  boot().catch((err) => toast(err.message, true));
+})();

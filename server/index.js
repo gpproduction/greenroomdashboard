@@ -1,0 +1,275 @@
+import http from 'node:http';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import express from 'express';
+import { WebSocketServer } from 'ws';
+
+import * as store from './store.js';
+import * as auth from './auth.js';
+import * as pco from './pco.js';
+import * as sync from './sync.js';
+import * as pp from './propresenter.js';
+import * as demo from './demo.js';
+import { buildRoster } from './roster.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PORT = Number(process.env.PORT || 8080);
+// Changes every server start; dashboards reload themselves when they see a new one
+// so updates to the app reach the TVs without anyone touching them.
+const BOOT_ID = crypto.randomBytes(6).toString('hex');
+
+// --- first-run seeding for demo mode -----------------------------------------
+if (pco.isDemo() && !store.get().devices.length) {
+  store.update((db) => {
+    db.devices = demo.seedDevices();
+    db.defaults = Object.fromEntries(Object.entries(demo.seedAssignments()).map(([k, v]) => [`p:${k}`, v]));
+    db.settings.pco.serviceTypeIds = ['st1'];
+    db.settings.pco.teamIds = ['t1', 't2'];
+  });
+}
+auth.bootstrapPassword();
+
+// --- dashboard payload ---------------------------------------------------------
+function dashboardState() {
+  const db = store.get();
+  const detail = sync.getActive();
+  const roster = buildRoster(detail, db);
+  const { display } = db.settings;
+  return {
+    bootId: BOOT_ID,
+    generatedAt: new Date().toISOString(),
+    display,
+    showTimers: display.showTimers && (db.settings.propresenter.enabled || pco.isDemo()),
+    plan: detail ? { ...detail.plan, items: detail.items } : null,
+    teams: roster.teams,
+    conflicts: roster.conflicts,
+    pco: sync.getStatus(),
+  };
+}
+
+// --- HTTP ----------------------------------------------------------------------
+const app = express();
+app.disable('x-powered-by');
+app.use(express.json({ limit: '1mb' }));
+
+app.get('/', (req, res) => res.redirect('/dashboard/'));
+app.use(express.static(path.join(__dirname, '..', 'public'), { extensions: ['html'] }));
+
+auth.routes(app);
+
+app.get('/api/health', (req, res) => res.json({ ok: true, bootId: BOOT_ID }));
+app.get('/api/dashboard', (req, res) => res.json({ ...dashboardState(), propresenter: pp.getState() }));
+
+const admin = express.Router();
+admin.use(auth.requireAdmin);
+
+admin.get('/settings', (req, res) => {
+  const { settings } = store.get();
+  res.json({
+    ...settings,
+    pco: { ...settings.pco, secret: settings.pco.secret ? '••••••••' : '', hasSecret: Boolean(settings.pco.secret), envCredentials: Boolean(process.env.PCO_APP_ID) },
+    admin: undefined,
+    demo: pco.isDemo(),
+  });
+});
+
+admin.put('/settings', (req, res) => {
+  const body = req.body || {};
+  store.update((db) => {
+    const s = db.settings;
+    if (body.pco) {
+      const { secret, hasSecret, envCredentials, ...rest } = body.pco;
+      Object.assign(s.pco, rest);
+      if (secret && !secret.startsWith('••')) s.pco.secret = secret;
+    }
+    if (body.propresenter) Object.assign(s.propresenter, body.propresenter);
+    if (body.display) Object.assign(s.display, body.display);
+  }, { topic: 'settings' });
+  if (body.pco) sync.restart();
+  if (body.propresenter) pp.kick();
+  res.json({ ok: true });
+});
+
+// Planning Center helpers
+admin.post('/pco/test', async (req, res) => {
+  const { appId, secret } = req.body || {};
+  const stored = store.get().settings.pco;
+  const creds = {
+    appId: appId || process.env.PCO_APP_ID || stored.appId,
+    secret: secret && !secret.startsWith('••') ? secret : process.env.PCO_SECRET || stored.secret,
+  };
+  try {
+    res.json(await pco.testConnection(creds));
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+admin.get('/pco/service-types', async (req, res) => {
+  try { res.json(await pco.listServiceTypes()); } catch (err) { res.status(502).json({ error: err.message }); }
+});
+admin.get('/pco/teams', async (req, res) => {
+  const ids = String(req.query.serviceTypeIds || '').split(',').filter(Boolean);
+  try { res.json(await pco.listTeams(ids.length ? ids : store.get().settings.pco.serviceTypeIds)); } catch (err) { res.status(502).json({ error: err.message }); }
+});
+admin.post('/sync', async (req, res) => {
+  await sync.syncNow();
+  res.json(sync.getStatus());
+});
+
+// Plans & assignments
+admin.get('/plans', (req, res) => {
+  res.json({ plans: sync.getUpcoming(), activeId: sync.getActive()?.plan.id || null, status: sync.getStatus() });
+});
+
+admin.get('/plans/:serviceTypeId/:planId', async (req, res) => {
+  try {
+    const detail = await sync.getPlanDetail(req.params.serviceTypeId, req.params.planId, { fresh: req.query.fresh === '1' });
+    const roster = buildRoster(detail, store.get(), { forAdmin: true });
+    res.json({ plan: detail.plan, items: detail.items, ...roster });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+admin.put('/plans/:planId/assignments/:key', (req, res) => {
+  const { planId, key } = req.params;
+  const { field, deviceId, remember = true } = req.body || {};
+  if (!['mic', 'iem'].includes(field)) return res.status(400).json({ error: 'field must be mic or iem' });
+  const value = deviceId || null;
+  store.update((db) => {
+    db.assignments[planId] ??= {};
+    db.assignments[planId][key] ??= {};
+    db.assignments[planId][key][field] = value;
+    if (remember && !key.startsWith('x:')) {
+      db.defaults[key] ??= {};
+      if (value) db.defaults[key][field] = value;
+      else delete db.defaults[key][field];
+    }
+  });
+  res.json({ ok: true });
+});
+
+admin.post('/plans/:planId/reset', (req, res) => {
+  store.update((db) => { delete db.assignments[req.params.planId]; });
+  res.json({ ok: true });
+});
+
+admin.post('/plans/:planId/extras', (req, res) => {
+  const { name, role } = req.body || {};
+  if (!name) return res.status(400).json({ error: 'Name is required' });
+  const extra = { key: `x:${store.newId()}`, name: String(name).slice(0, 80), role: String(role || 'Guest').slice(0, 80) };
+  store.update((db) => { (db.extras[req.params.planId] ??= []).push(extra); });
+  res.json(extra);
+});
+
+admin.delete('/plans/:planId/extras/:key', (req, res) => {
+  store.update((db) => {
+    db.extras[req.params.planId] = (db.extras[req.params.planId] || []).filter((x) => x.key !== req.params.key);
+    if (db.assignments[req.params.planId]) delete db.assignments[req.params.planId][req.params.key];
+  });
+  res.json({ ok: true });
+});
+
+// Devices
+const DEVICE_FIELDS = ['type', 'name', 'channel', 'frequency', 'kind', 'color', 'notes', 'active'];
+function cleanDevice(body) {
+  const d = {};
+  for (const f of DEVICE_FIELDS) if (f in body) d[f] = typeof body[f] === 'string' ? body[f].slice(0, 120) : body[f];
+  if (d.type && !['mic', 'iem'].includes(d.type)) d.type = 'mic';
+  return d;
+}
+admin.get('/devices', (req, res) => res.json(store.get().devices));
+admin.post('/devices', (req, res) => {
+  const d = { id: store.newId('d'), type: 'mic', name: 'New device', channel: '', frequency: '', kind: '', color: '#3498db', notes: '', active: true, ...cleanDevice(req.body || {}) };
+  store.update((db) => { db.devices.push(d); });
+  res.json(d);
+});
+admin.put('/devices/:id', (req, res) => {
+  let found = null;
+  store.update((db) => {
+    found = db.devices.find((d) => d.id === req.params.id);
+    if (found) Object.assign(found, cleanDevice(req.body || {}));
+  });
+  found ? res.json(found) : res.status(404).json({ error: 'Not found' });
+});
+admin.delete('/devices/:id', (req, res) => {
+  store.update((db) => {
+    db.devices = db.devices.filter((d) => d.id !== req.params.id);
+    for (const map of [db.defaults, ...Object.values(db.assignments)]) {
+      for (const a of Object.values(map)) for (const f of ['mic', 'iem']) if (a[f] === req.params.id) a[f] = null;
+    }
+  });
+  res.json({ ok: true });
+});
+admin.put('/devices-order', (req, res) => {
+  const ids = req.body?.ids || [];
+  store.update((db) => {
+    const pos = new Map(ids.map((id, i) => [id, i]));
+    db.devices.sort((a, b) => (pos.get(a.id) ?? 1e9) - (pos.get(b.id) ?? 1e9));
+  });
+  res.json({ ok: true });
+});
+
+// ProPresenter
+admin.post('/propresenter/test', async (req, res) => {
+  const cfg = { ...store.get().settings.propresenter, ...(req.body || {}) };
+  if (pco.isDemo() && !cfg.host) return res.json({ ok: true, version: { name: 'Demo' }, timers: pp.getState().timers });
+  try {
+    res.json(await pp.test(cfg));
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.name === 'TimeoutError' ? `No response from ${cfg.host}:${cfg.port}` : err.message });
+  }
+});
+
+app.use('/api/admin', admin);
+app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
+
+// --- WebSocket push --------------------------------------------------------------
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server, path: '/ws' });
+
+function broadcast(type, payload) {
+  const msg = JSON.stringify({ type, payload });
+  for (const client of wss.clients) if (client.readyState === 1) client.send(msg);
+}
+
+wss.on('connection', (ws) => {
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
+  ws.send(JSON.stringify({ type: 'state', payload: dashboardState() }));
+  ws.send(JSON.stringify({ type: 'propresenter', payload: pp.getState() }));
+});
+
+// Heartbeat: drop dead sockets so clients notice and reconnect.
+setInterval(() => {
+  for (const ws of wss.clients) {
+    if (!ws.isAlive) { ws.terminate(); continue; }
+    ws.isAlive = false;
+    ws.ping();
+  }
+}, 15_000);
+
+let pending = null;
+function scheduleStateBroadcast() {
+  if (pending) return;
+  pending = setTimeout(() => { pending = null; broadcast('state', dashboardState()); }, 150);
+}
+store.events.on('change', scheduleStateBroadcast);
+sync.events.on('change', scheduleStateBroadcast);
+pp.events.on('change', (s) => broadcast('propresenter', s));
+
+// --- start -------------------------------------------------------------------------
+server.listen(PORT, () => {
+  console.log(`Green Room Dashboard on http://localhost:${PORT}  (dashboard: /dashboard  admin: /admin)${pco.isDemo() ? '  [DEMO MODE]' : ''}`);
+  sync.start();
+  pp.start();
+});
+
+function shutdown() {
+  store.flush();
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+

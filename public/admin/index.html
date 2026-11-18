@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Green Room Admin</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <div id="login" class="login hidden">
+    <form id="login-form" class="card">
+      <h1>Green Room Admin</h1>
+      <p id="login-hint" class="muted"></p>
+      <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required>
+      <input type="password" id="login-confirm" class="hidden" placeholder="Confirm password" autocomplete="new-password">
+      <button type="submit" class="primary" id="login-submit">Sign in</button>
+      <p id="login-error" class="error"></p>
+    </form>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="bar">
+      <div class="logo">Green Room</div>
+      <nav id="tabs">
+        <button data-tab="assign" class="active">Assign</button>
+        <button data-tab="devices">Devices</button>
+        <button data-tab="settings">Settings</button>
+      </nav>
+      <div class="right">
+        <a href="/dashboard/" target="_blank" class="btn">Open dashboard ↗</a>
+        <button id="logout" class="ghost">Sign out</button>
+      </div>
+    </header>
+    <div id="demo-note" class="note hidden">Demo mode: showing sample Planning Center and ProPresenter data.</div>
+    <main>
+      <section id="tab-assign" class="tab"></section>
+      <section id="tab-devices" class="tab hidden"></section>
+      <section id="tab-settings" class="tab hidden"></section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>
