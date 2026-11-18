@@ -5,7 +5,13 @@ import * as store from './store.js';
 
 const COOKIE = 'grd_session';
 const SESSION_DAYS = 30;
-const sessions = new Map(); // token -> expiresAt
+
+// Sessions are persisted (as SHA-256 of the token) so a server restart or update
+// doesn't sign everyone out.
+const tokenHash = (token) => crypto.createHash('sha256').update(token).digest('hex');
+function sessions() {
+  return store.get().sessions;
+}
 
 export function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -40,21 +46,34 @@ function parseCookies(header = '') {
   );
 }
 
+function currentToken(req) {
+  return parseCookies(req.headers.cookie)[COOKIE] || null;
+}
+
 function isValidSession(req) {
-  const token = parseCookies(req.headers.cookie)[COOKIE];
-  const exp = token && sessions.get(token);
+  const token = currentToken(req);
+  const exp = token && sessions()[tokenHash(token)];
   if (!exp) return false;
   if (exp < Date.now()) {
-    sessions.delete(token);
+    store.update((db) => { delete db.sessions[tokenHash(token)]; }, { topic: 'auth' });
     return false;
   }
   return true;
 }
 
-function startSession(res) {
+// `Secure` when the browser reached us over HTTPS (e.g. through Cloudflare Tunnel).
+function cookieAttrs(req, maxAge) {
+  return `HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${req.secure ? '; Secure' : ''}`;
+}
+
+function startSession(req, res) {
   const token = crypto.randomBytes(32).toString('hex');
-  sessions.set(token, Date.now() + SESSION_DAYS * 86400_000);
-  res.setHeader('Set-Cookie', `${COOKIE}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${SESSION_DAYS * 86400}`);
+  store.update((db) => {
+    const now = Date.now();
+    for (const [h, exp] of Object.entries(db.sessions)) if (exp < now) delete db.sessions[h];
+    db.sessions[tokenHash(token)] = now + SESSION_DAYS * 86400_000;
+  }, { topic: 'auth' });
+  res.setHeader('Set-Cookie', `${COOKIE}=${token}; ${cookieAttrs(req, SESSION_DAYS * 86400)}`);
 }
 
 export function requireAdmin(req, res, next) {
@@ -86,7 +105,7 @@ export function routes(app) {
     const { password } = req.body || {};
     if (!password || password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
     store.update((db) => { db.settings.admin.passwordHash = hashPassword(password); });
-    startSession(res);
+    startSession(req, res);
     res.json({ ok: true });
   });
 
@@ -99,14 +118,14 @@ export function routes(app) {
       return res.status(401).json({ error: 'Incorrect password' });
     }
     failures.delete(ip);
-    startSession(res);
+    startSession(req, res);
     res.json({ ok: true });
   });
 
   app.post('/api/auth/logout', (req, res) => {
-    const token = parseCookies(req.headers.cookie)[COOKIE];
-    if (token) sessions.delete(token);
-    res.setHeader('Set-Cookie', `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`);
+    const token = currentToken(req);
+    if (token) store.update((db) => { delete db.sessions[tokenHash(token)]; }, { topic: 'auth' });
+    res.setHeader('Set-Cookie', `${COOKIE}=; ${cookieAttrs(req, 0)}`);
     res.json({ ok: true });
   });
 
@@ -116,7 +135,12 @@ export function routes(app) {
       return res.status(401).json({ error: 'Current password is incorrect' });
     }
     if (!next || next.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
-    store.update((db) => { db.settings.admin.passwordHash = hashPassword(next); });
+    // New password signs out every other device.
+    const keep = tokenHash(currentToken(req));
+    store.update((db) => {
+      db.settings.admin.passwordHash = hashPassword(next);
+      db.sessions = { [keep]: db.sessions[keep] };
+    }, { topic: 'auth' });
     res.json({ ok: true });
   });
 }

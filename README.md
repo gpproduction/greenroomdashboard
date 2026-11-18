@@ -16,7 +16,9 @@ A self-hosted mic and in-ear-monitor assignment board for church production team
                      └──────────────────────────┘
 ```
 
-The server **must run on the church network**, because ProPresenter's API is only reachable locally.
+The server **must run on the church network**, because ProPresenter's API is only reachable locally. To reach it from anywhere, put Cloudflare Tunnel with a Google Workspace or email sign-in in front of it.
+
+**Installing on the church Mac (with remote access): see [docs/DEPLOY-MAC.md](docs/DEPLOY-MAC.md).**
 
 ## Quick start
 
@@ -118,6 +120,7 @@ server/
   propresenter.js  ProPresenter 7 API poller (timers, active presentation)
   roster.js        merges plan people + devices + assignments, detects conflicts
   store.js         JSON file persistence
+  env.js           loads .env before anything else
   auth.js          admin password + sessions
   demo.js          sample data for DEMO=1
 public/
@@ -129,4 +132,5 @@ public/
 
 - The dashboard is read-only and open to anyone on the network. Everything under `/api/admin` requires the admin password.
 - The Planning Center secret is stored in `data/db.json`, or comes from `PCO_SECRET` in the environment. Keep the server on a trusted network.
-- Don't expose port 8080 to the internet. For remote admin access, use a VPN or a tunnel such as Tailscale.
+- Never forward port 8080 on the router. For remote access, use Cloudflare Tunnel with Cloudflare Access ([docs/DEPLOY-MAC.md](docs/DEPLOY-MAC.md#5-access-from-anywhere-with-cloudflare)), or Tailscale.
+- Admin logins persist across restarts (stored hashed in `data/db.json`). Changing the admin password signs out every other device.

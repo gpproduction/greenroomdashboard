@@ -46,6 +46,7 @@ function defaults() {
     defaults: {}, // personKey -> { mic, iem }   (last-used, auto-fills future plans)
     extras: {}, // planId -> [{ key, name, role }]   (guests not in Planning Center)
     lastPlan: null, // cached copy of the last good plan detail for offline resilience
+    sessions: {}, // sha256(token) -> expiresAt (admin logins)
   };
 }
 

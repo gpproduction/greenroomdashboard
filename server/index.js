@@ -1,3 +1,4 @@
+import './env.js'; // must be first: loads .env before other modules read process.env
 import http from 'node:http';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -15,6 +16,7 @@ import { buildRoster, assignmentChanges } from './roster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 8080);
+const HOST = process.env.HOST || '0.0.0.0';
 // Changes every server start; dashboards reload themselves when they see a new one
 // so updates to the app reach the TVs without anyone touching them.
 const BOOT_ID = crypto.randomBytes(6).toString('hex');
@@ -56,6 +58,9 @@ function dashboardState() {
 // --- HTTP ----------------------------------------------------------------------
 const app = express();
 app.disable('x-powered-by');
+// Cloudflare Tunnel (cloudflared) connects from this machine and sets X-Forwarded-*.
+// Trusting loopback lets req.ip / req.secure reflect the real visitor and HTTPS.
+app.set('trust proxy', 'loopback');
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/', (req, res) => res.redirect('/dashboard/'));
@@ -293,12 +298,12 @@ function scheduleStateBroadcast() {
   if (pending) return;
   pending = setTimeout(() => { pending = null; broadcast('state', dashboardState()); }, 150);
 }
-store.events.on('change', scheduleStateBroadcast);
+store.events.on('change', (topic) => { if (topic !== 'auth') scheduleStateBroadcast(); });
 sync.events.on('change', scheduleStateBroadcast);
 pp.events.on('change', (s) => broadcast('propresenter', s));
 
 // --- start -------------------------------------------------------------------------
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   console.log(`Green Room Dashboard on http://localhost:${PORT}  (dashboard: /dashboard  admin: /admin)${pco.isDemo() ? '  [DEMO MODE]' : ''}`);
   sync.start();
   pp.start();
