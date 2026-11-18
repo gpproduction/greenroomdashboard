@@ -1,6 +1,9 @@
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production DATA_DIR=/data PORT=8080
+# Commit the image was built from (set by GitHub Actions) — shown in admin.
+ARG GIT_SHA=
+ENV APP_COMMIT=$GIT_SHA
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 COPY server ./server

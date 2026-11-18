@@ -28,6 +28,7 @@ The server **must run on the church network**, because ProPresenter's API is onl
 **Installing at church:**
 - **Synology NAS** (recommended): [docs/DEPLOY-SYNOLOGY.md](docs/DEPLOY-SYNOLOGY.md). It runs in Container Manager, with no Terminal needed.
 - **Mac**: [docs/DEPLOY-MAC.md](docs/DEPLOY-MAC.md).
+- **Automatic updates** (GitHub Actions builds an image, and a Watchtower updater on the NAS installs it): [docs/AUTO-UPDATE.md](docs/AUTO-UPDATE.md).
 
 ## Quick start
 

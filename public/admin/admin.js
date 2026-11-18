@@ -109,7 +109,7 @@
     $('login').classList.add('hidden');
     $('app').classList.remove('hidden');
     settings = await api('/api/admin/settings');
-    api('/api/health').then((h) => { $('version').textContent = `v${h.version}`; }).catch(() => {});
+    api('/api/health').then((h) => { $('version').textContent = `v${h.version}${h.commit ? ` · ${h.commit}` : ''}`; }).catch(() => {});
     $('demo-note').classList.toggle('hidden', !settings.demo);
     const fromHash = location.hash.slice(1);
     switchTab(renderers[fromHash] ? fromHash : (settings.pco.hasSecret || settings.pco.envCredentials || settings.demo ? 'assign' : 'settings'));
@@ -931,7 +931,41 @@
         field('Keep recording after each service ends (minutes)', el('input', { type: 'number', min: 0, max: 120, value: s.live.postRollMinutes, oninput: (e) => { s.live.postRollMinutes = Number(e.target.value); } }), 'In case the service runs long.')),
       el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('live') }, 'Save timing settings')));
 
-    root.replaceChildren(pcoSection, ppSection, hdSection, obsSection, unifiSection, liveSection, displaySection, pwSection);
+    // Updates ------------------------------------------------------------------------------
+    const updResult = el('div', { class: 'help' });
+    const updSection = el('div', { class: 'section' }, el('h2', {}, 'Updates'), el('p', { class: 'muted' }, 'Checking…'));
+    api('/api/admin/update').then((u) => {
+      updSection.replaceChildren(
+        el('h2', {}, 'Updates'),
+        el('p', {}, `Running v${u.version}${u.commit ? ` (build ${u.commit})` : ''}.`),
+        u.autoUpdate
+          ? el('div', {},
+            el('p', { class: 'help' }, 'Automatic updates are on: new versions install by themselves Monday–Saturday between 1 AM and 5 PM (never during Sunday services or evening rehearsals). Open dashboards reload on their own.'),
+            el('div', { class: 'row' }, el('button', {
+              class: 'primary',
+              onclick: async (e) => {
+                e.target.disabled = true;
+                const before = (await api('/api/health')).bootId;
+                await api('/api/admin/update', { method: 'POST' });
+                updResult.className = 'help';
+                updResult.textContent = 'Checking GitHub for a new version… (this page reloads by itself if one is installed)';
+                const started = Date.now();
+                const poll = setInterval(async () => {
+                  const h = await fetch('/api/health').then((r) => r.json()).catch(() => null);
+                  if (h && h.bootId !== before) { clearInterval(poll); location.reload(); }
+                  else if (Date.now() - started > 180_000) {
+                    clearInterval(poll);
+                    updResult.textContent = 'No new version found — you’re up to date.';
+                    e.target.disabled = false;
+                  }
+                }, 3000);
+              },
+            }, 'Install updates now')),
+            updResult)
+          : el('p', { class: 'help' }, 'Automatic updates aren’t set up on this server yet. See docs/AUTO-UPDATE.md.'));
+    }).catch(() => {});
+
+    root.replaceChildren(pcoSection, ppSection, hdSection, obsSection, unifiSection, liveSection, displaySection, updSection, pwSection);
     if (s.pco.hasSecret || s.pco.envCredentials || s.demo) loadServiceTypes();
     loadPlanChoices();
     loadLeaderColumns();

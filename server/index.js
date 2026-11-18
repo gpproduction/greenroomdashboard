@@ -126,7 +126,8 @@ auth.routes(app);
 
 // App version (from package.json) so it's easy to confirm an update actually took.
 const VERSION = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).version;
-app.get('/api/health', (req, res) => res.json({ ok: true, version: VERSION, bootId: BOOT_ID }));
+const COMMIT = (process.env.APP_COMMIT || '').slice(0, 7) || null;
+app.get('/api/health', (req, res) => res.json({ ok: true, version: VERSION, commit: COMMIT, bootId: BOOT_ID }));
 app.get('/api/dashboard', (req, res) => res.json({ ...dashboardState(), propresenter: pp.getState(), media: media.getState() }));
 
 const admin = express.Router();
@@ -295,6 +296,21 @@ admin.put('/visibility', (req, res) => {
   const { teamId, key, show } = req.body || {};
   if (!teamId || !key || typeof show !== 'boolean') return res.status(400).json({ error: 'teamId, key and show are required' });
   store.update((db) => { (db.visibility ??= {})[visibilityKey(teamId, key)] = show; });
+  res.json({ ok: true });
+});
+
+// Auto-update (Watchtower sidecar on the NAS): status + "install updates now".
+admin.get('/update', (req, res) => {
+  res.json({ version: VERSION, commit: COMMIT, autoUpdate: Boolean(process.env.UPDATER_URL) });
+});
+admin.post('/update', async (req, res) => {
+  const url = process.env.UPDATER_URL;
+  if (!url) return res.status(400).json({ error: 'Automatic updates are not set up on this server (see docs/AUTO-UPDATE.md).' });
+  // Watchtower may replace this very container while handling the request, so don't wait for it.
+  fetch(`${url.replace(/\/$/, '')}/v1/update`, {
+    headers: { Authorization: `Bearer ${process.env.UPDATER_TOKEN || ''}` },
+    signal: AbortSignal.timeout(10 * 60_000),
+  }).then((r) => console.log(`[update] updater answered ${r.status}`)).catch((err) => console.log(`[update] ${err.message}`));
   res.json({ ok: true });
 });
 

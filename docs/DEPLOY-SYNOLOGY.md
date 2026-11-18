@@ -82,6 +82,8 @@ To run it full screen and start automatically, use the Chrome kiosk commands in 
 
 ## Updating
 
+> **Easier: set up automatic updates once** with [AUTO-UPDATE.md](AUTO-UPDATE.md). After that, new versions install themselves and you can skip the manual steps below.
+
 1. Download the new ZIP (step 2.1) and extract it on your computer.
 2. In File Station, upload its contents into `docker/greenroom` and choose **Overwrite**. Don't delete the `data` folder.
 3. In **Container Manager → Project → greenroom**:
