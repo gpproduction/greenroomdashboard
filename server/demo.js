@@ -31,6 +31,7 @@ export function teams() {
 }
 
 function plan() {
+  if (process.env.DEMO_LIVE === '1') return livePlan();
   const day = nextSunday();
   return {
     id: 'demo-plan',
@@ -44,6 +45,28 @@ function plan() {
       { id: 'pt1', name: 'Sound Check', type: 'rehearsal', startsAt: at(day, 7, 45), endsAt: at(day, 8, 45) },
       { id: 'pt2', name: null, type: 'service', startsAt: at(day, 9, 0), endsAt: at(day, 10, 30) },
       { id: 'pt3', name: null, type: 'service', startsAt: at(day, 11, 0), endsAt: at(day, 12, 30) },
+    ],
+    url: 'https://services.planningcenteronline.com/',
+  };
+}
+
+// DEMO_LIVE=1: a service that started 10 minutes ago, to try live item timing.
+const DEMO_T0 = Date.now(); // anchor so the demo service doesn't drift on every sync
+function livePlan() {
+  const now = DEMO_T0;
+  const iso = (min) => new Date(now + min * 60_000).toISOString();
+  return {
+    id: 'demo-plan',
+    serviceTypeId: 'st1',
+    serviceTypeName: 'Sunday Morning',
+    title: null,
+    seriesTitle: 'Demo Series',
+    dates: 'Today',
+    sortDate: iso(-10),
+    times: [
+      { id: 'pt1', name: 'Sound Check', type: 'rehearsal', startsAt: iso(-90), endsAt: iso(-30) },
+      { id: 'pt2', name: null, type: 'service', startsAt: iso(-10), endsAt: iso(80) },
+      { id: 'pt3', name: null, type: 'service', startsAt: iso(110), endsAt: iso(200) },
     ],
     url: 'https://services.planningcenteronline.com/',
   };
@@ -80,7 +103,8 @@ export function planDetail() {
       { id: 'i2', title: 'Worship', type: 'header', length: 0, sequence: 2, position: 'during' },
       { id: 'i3', title: 'Opening Song', type: 'song', length: 270, sequence: 3, position: 'during', key: 'G', notes: [{ category: 'Lead', content: 'Alex' }] },
       { id: 'i4', title: 'Second Song', type: 'song', length: 300, sequence: 4, position: 'during', key: 'D', notes: [{ category: 'Lead', content: 'Jordan' }] },
-      { id: 'i5', title: 'Welcome & Announcements', type: 'item', length: 300, sequence: 5, position: 'during', notes: [{ category: 'Lead', content: 'Drew' }] },
+      { id: 'i5', title: 'Welcome & Announcements', type: 'item', length: 300, sequence: 5, position: 'during', notes: [{ category: 'Lead', content: 'Drew' }],
+        description: 'Baptism Sunday sign-ups close Dec 7\nChristmas Eve services 4:00 & 6:00\nNew here? Stop by the Info Center' },
       { id: 'i6', title: 'Third Song', type: 'song', length: 330, sequence: 6, position: 'during', key: 'A', notes: [{ category: 'Lead', content: 'Alex' }] },
       { id: 'i7', title: 'Message', type: 'header', length: 0, sequence: 7, position: 'during' },
       { id: 'i8', title: 'Sermon', type: 'item', length: 2100, sequence: 8, position: 'during', notes: [{ category: 'Lead', content: 'Pastor Pat' }] },

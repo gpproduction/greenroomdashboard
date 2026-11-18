@@ -13,6 +13,7 @@ import * as pco from './pco.js';
 import * as sync from './sync.js';
 import * as pp from './propresenter.js';
 import * as demo from './demo.js';
+import * as live from './live.js';
 import { buildRoster, assignmentChanges } from './roster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -50,6 +51,8 @@ function dashboardState() {
     display,
     showTimers: display.showTimers && (db.settings.propresenter.enabled || pco.isDemo()),
     plan: detail ? { ...detail.plan, items } : null,
+    serverTime: Date.now(), // lets dashboards correct for clock drift on the live timer
+    live: live.summary(detail, db),
     teams: roster.teams,
     conflicts: roster.conflicts,
     pco: sync.getStatus(),
@@ -132,6 +135,7 @@ admin.put('/settings', (req, res) => {
     }
     if (body.propresenter) Object.assign(s.propresenter, body.propresenter);
     if (body.display) Object.assign(s.display, body.display);
+    if (body.live) Object.assign(s.live, body.live);
   }, { topic: 'settings' });
   if (body.pco) sync.restart();
   if (body.propresenter) pp.kick();
@@ -173,7 +177,8 @@ admin.get('/plans/:serviceTypeId/:planId', async (req, res) => {
   try {
     const detail = await sync.getPlanDetail(req.params.serviceTypeId, req.params.planId, { fresh: req.query.fresh === '1' });
     const roster = buildRoster(detail, store.get(), { forAdmin: true });
-    res.json({ plan: detail.plan, items: detail.items, ...roster });
+    const db = store.get();
+    res.json({ plan: detail.plan, items: detail.items, ...roster, live: db.live[detail.plan.id] || {}, liveCurrent: db.liveCurrent?.planId === detail.plan.id ? db.liveCurrent : null });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }
@@ -199,6 +204,15 @@ admin.put('/plans/:planId/assignments/:key', (req, res) => {
     }
   });
   res.json({ ok: true, changes });
+});
+
+// Clear recorded item times for one service time of a plan.
+admin.delete('/plans/:planId/live/:planTimeId', (req, res) => {
+  store.update((db) => {
+    if (db.live[req.params.planId]) delete db.live[req.params.planId][req.params.planTimeId];
+    if (db.liveCurrent?.planId === req.params.planId && db.liveCurrent.planTimeId === req.params.planTimeId) db.liveCurrent = null;
+  }, { topic: 'live' });
+  res.json({ ok: true });
 });
 
 admin.post('/plans/:planId/reset', (req, res) => {
@@ -344,6 +358,7 @@ server.listen(PORT, HOST, () => {
   console.log(`Green Room Dashboard on http://localhost:${PORT}  (dashboard: /dashboard  admin: /admin)${pco.isDemo() ? '  [DEMO MODE]' : ''}`);
   sync.start();
   pp.start();
+  live.start();
 });
 
 function shutdown() {

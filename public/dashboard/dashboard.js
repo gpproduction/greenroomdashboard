@@ -34,7 +34,11 @@
     return node;
   }
 
-  const tz = () => state?.display?.timezone || undefined;
+  // Church time zone from Settings; an invalid name falls back to the TV's own zone instead of crashing.
+  const tz = () => {
+    const zone = state?.display?.timezone;
+    try { if (zone) new Intl.DateTimeFormat('en-US', { timeZone: zone }); return zone || undefined; } catch { return undefined; }
+  };
   const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz() });
 
   function fmtDuration(totalSec) {
@@ -166,6 +170,24 @@
     return partial ? partial.id : null;
   }
 
+  // Server time ≈ Date.now() + clockOffset (keeps the live counter honest if the TV's clock drifts).
+  let clockOffset = 0;
+  const serverNow = () => Date.now() + clockOffset;
+
+  function showDescription(item) {
+    const mode = state.display.itemDescriptions || 'announcements';
+    if (!item.description || mode === 'none') return false;
+    return mode === 'all' || /announce/i.test(item.title);
+  }
+
+  // Seconds an item has actually run in the shown service time (incl. the running segment).
+  function actualSeconds(item) {
+    const live = state.live;
+    let secs = live?.actuals?.[item.id] || 0;
+    if (live?.recording && live.currentItemId === item.id) secs += Math.max(0, (serverNow() - live.currentStartedAt) / 1000);
+    return secs;
+  }
+
   function renderOrder() {
     const panel = $('order-panel');
     const list = $('order');
@@ -173,18 +195,70 @@
     const items = state.plan?.items || [];
     if (!state.display.showOrderOfService || !items.length) { panel.classList.add('hidden'); return; }
     panel.classList.remove('hidden');
-    const activeId = activeItemId(items, pp.activePresentation);
+
+    const live = state.live;
+    const hasActuals = Boolean(live && (live.recording || Object.keys(live.actuals || {}).length));
+    const activeId = live?.recording ? live.currentItemId : activeItemId(items, pp.activePresentation);
+
+    // Header badge: LIVE while recording, otherwise which service's actual times are shown.
+    const status = $('live-status');
+    status.className = 'live-status';
+    if (live?.recording) {
+      status.classList.add('on');
+      status.replaceChildren(el('i', { class: 'rec' }), `LIVE · ${fmtTime(live.startsAt)}`);
+    } else if (hasActuals && live.startsAt) {
+      status.replaceChildren(`${fmtTime(live.startsAt)} actual`);
+    } else status.replaceChildren();
+
+    let plannedTotal = 0;
+    let actualTotal = 0;
     for (const item of items) {
       if (item.type === 'header') {
         list.append(el('li', { class: 'header' }, item.title));
         continue;
       }
       const isActive = item.id === activeId;
-      list.append(el('li', { class: [isActive ? 'active' : '', item.position !== 'during' ? 'prepost' : ''].join(' ') },
-        el('span', {}, item.title, item.key ? el('span', { class: 'key' }, item.key) : null,
-          item.leader ? el('span', { class: 'leader' }, item.leader) : null),
-        el('span', { class: 'len' }, item.length ? fmtDuration(item.length) : '')));
+      const isLive = live?.recording && item.id === live.currentItemId;
+      const secs = hasActuals ? actualSeconds(item) : 0;
+      if (item.position === 'during') plannedTotal += item.length || 0;
+      actualTotal += secs;
+      const over = item.length && secs > item.length;
+
+      const timing = el('span', { class: 'timing' },
+        isLive
+          ? el('span', { class: 'actual live' + (over ? ' over' : ''), id: 'live-elapsed', 'data-item': item.id }, fmtDuration(secs))
+          : secs ? el('span', { class: 'actual' + (over ? ' over' : ' under') }, fmtDuration(secs)) : null,
+        el('span', { class: 'len' }, item.length ? (secs || isLive ? `of ${fmtDuration(item.length)}` : fmtDuration(item.length)) : ''));
+
+      list.append(el('li', { class: [isActive ? 'active' : '', isLive ? 'is-live' : '', item.position !== 'during' ? 'prepost' : ''].join(' ') },
+        el('span', {},
+          item.title, item.key ? el('span', { class: 'key' }, item.key) : null,
+          item.leader ? el('span', { class: 'leader' }, item.leader) : null,
+          showDescription(item) ? el('span', { class: 'desc' }, item.description) : null),
+        timing));
     }
+    if (hasActuals && actualTotal) {
+      list.append(el('li', { class: 'total' },
+        el('span', {}, 'Service so far'),
+        el('span', { class: 'timing' },
+          el('span', { class: 'actual' + (actualTotal > plannedTotal ? ' over' : ''), id: 'live-total' }, fmtDuration(actualTotal)),
+          plannedTotal ? el('span', { class: 'len' }, `of ${fmtDuration(plannedTotal)}`) : null)));
+    }
+  }
+
+  // Tick the running item and total every second without re-rendering the list.
+  function tickLive() {
+    const live = state?.live;
+    if (!live?.recording) return;
+    const node = $('live-elapsed');
+    const item = state.plan?.items?.find((i) => i.id === live.currentItemId);
+    if (node && item) {
+      const secs = actualSeconds(item);
+      node.textContent = fmtDuration(secs);
+      node.classList.toggle('over', Boolean(item.length && secs > item.length));
+    }
+    const total = $('live-total');
+    if (total) total.textContent = fmtDuration(state.plan.items.reduce((sum, i) => sum + (i.type === 'header' ? 0 : actualSeconds(i)), 0));
   }
 
   function renderTimers() {
@@ -240,6 +314,7 @@
   }
 
   function tickClock() {
+    tickLive();
     const g = greeting();
     if ($('greeting').textContent !== g) $('greeting').textContent = g;
     $('clock').textContent = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: tz() });
@@ -266,6 +341,7 @@
     // A new bootId means the server restarted (possibly with new code) → reload.
     if (bootId && s.bootId !== bootId) { location.reload(); return; }
     bootId = s.bootId;
+    if (s.serverTime) clockOffset = s.serverTime - Date.now();
     state = s;
     render();
   }

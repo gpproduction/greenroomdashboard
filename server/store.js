@@ -38,7 +38,13 @@ function defaults() {
         showOrderOfService: true,
         showTimers: true,
         showServiceCountdown: true,
+        itemDescriptions: 'announcements', // 'announcements' | 'all' | 'none'
         reloadHours: 6,
+      },
+      live: {
+        enabled: true, // record actual item times during service times
+        preRollMinutes: 20, // start recording this long before each service time
+        postRollMinutes: 15, // keep recording this long after it ends
       },
       admin: { passwordHash: null },
     },
@@ -48,6 +54,8 @@ function defaults() {
     extras: {}, // planId -> [{ key, name, role }]   (guests not in Planning Center)
     lastPlan: null, // cached copy of the last good plan detail for offline resilience
     sessions: {}, // sha256(token) -> expiresAt (admin logins)
+    live: {}, // planId -> planTimeId -> { items: { itemId: seconds }, segments: [...] }
+    liveCurrent: null, // { planId, planTimeId, itemId, startedAt, windowEnd } while an item is live
   };
 }
 

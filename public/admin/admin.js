@@ -98,6 +98,11 @@
   }
 
   let settings = null;
+  // Show times in the church's time zone (Settings → Dashboard display), not the browser's.
+  const churchTz = () => {
+    const tz = settings?.display?.timezone;
+    try { if (tz) new Intl.DateTimeFormat('en-US', { timeZone: tz }); return tz || undefined; } catch { return undefined; }
+  };
   async function startApp() {
     $('login').classList.add('hidden');
     $('app').classList.remove('hidden');
@@ -150,7 +155,7 @@
       el('div', { class: 'plan-bar' },
         select,
         el('button', { onclick: () => loadPlan(true) }, '↻ Refresh from Planning Center'),
-        el('span', { class: 'muted help' }, status.lastSync ? `Last sync ${new Date(status.lastSync).toLocaleTimeString()}` : ''),
+        el('span', { class: 'muted help' }, status.lastSync ? `Last sync ${new Date(status.lastSync).toLocaleTimeString([], { timeZone: churchTz() })}` : ''),
       ),
       planBody,
     );
@@ -202,7 +207,7 @@
         el('a', { href: plan.url, target: '_blank', rel: 'noopener' }, 'Open in Planning Center ↗'),
       ),
       el('p', { class: 'help' }, 'Assignments save instantly and appear on the dashboard within a second. Only people with a mic or IEM show on the dashboard. Picking a mic also picks its linked IEM; you can still change the IEM on its own. Each person\'s choice is remembered and pre-fills future plans (marked “auto”).'),
-      meta?.times?.length ? el('p', { class: 'help' }, meta.times.map((t) => `${t.name || (t.type === 'service' ? 'Service' : t.type)} ${new Date(t.startsAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`).join(' · ')) : null,
+      meta?.times?.length ? el('p', { class: 'help' }, meta.times.map((t) => `${t.name || (t.type === 'service' ? 'Service' : t.type)} ${new Date(t.startsAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: churchTz() })}`).join(' · ')) : null,
     );
 
     const conflictBox = conflicts.length ? el('div', { class: 'section conflicts' },
@@ -283,7 +288,51 @@
         el('button', { class: 'primary', onclick: () => switchTab('devices') }, 'Add devices')));
       return;
     }
-    root.replaceChildren(header, conflictBox || '', ...blocks, guests, reset);
+    root.replaceChildren(header, conflictBox || '', ...blocks, guests, timingReport(data, reload), reset);
+  }
+
+  // Planned vs actual item times for each service time (recorded from ProPresenter).
+  function timingReport(data, reload) {
+    const services = (data.plan.times || []).filter((t) => t.type === 'service');
+    const fmt = (secs) => {
+      if (!secs) return '';
+      secs = Math.round(secs);
+      const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+      return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+    };
+    const label = (t) => new Date(t.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: churchTz() });
+    const section = el('div', { class: 'section' },
+      el('h2', {}, 'Service timing'),
+      el('p', { class: 'help' }, 'Actual time spent on each item, recorded automatically while an item is live in ProPresenter during each service time (never during rehearsals).'));
+    if (!services.length) { section.append(el('p', { class: 'muted' }, 'This plan has no service times in Planning Center.')); return section; }
+    const items = data.items.filter((i) => i.type !== 'header');
+    const totals = services.map((t) => Object.values(data.live[t.id]?.items || {}).reduce((a, b) => a + b, 0));
+    section.append(el('div', { class: 'table-wrap' }, el('table', { class: 'timing-table' },
+      el('thead', {}, el('tr', {},
+        el('th', {}, 'Item'), el('th', {}, 'Planned'),
+        services.map((t) => el('th', {}, label(t), data.live[t.id] ? el('button', {
+          class: 'small ghost danger',
+          title: 'Clear recorded times for this service',
+          onclick: async () => {
+            if (!confirm(`Clear the recorded times for the ${label(t)} service?`)) return;
+            await api(`/api/admin/plans/${data.plan.id}/live/${t.id}`, { method: 'DELETE' });
+            reload();
+          },
+        }, 'Clear') : null)))),
+      el('tbody', {},
+        items.map((i) => el('tr', {},
+          el('td', {}, i.title),
+          el('td', { class: 'num' }, fmt(i.length)),
+          services.map((t) => {
+            const secs = data.live[t.id]?.items?.[i.id];
+            const isLive = data.liveCurrent?.planTimeId === t.id && data.liveCurrent.itemId === i.id;
+            return el('td', { class: 'num' + (secs && i.length && secs > i.length ? ' over' : '') }, fmt(secs), isLive ? el('span', { class: 'badge live' }, 'LIVE') : null);
+          }))),
+        el('tr', { class: 'total' },
+          el('td', {}, 'Total'),
+          el('td', { class: 'num' }, fmt(items.filter((i) => i.position === 'during').reduce((a, i) => a + (i.length || 0), 0))),
+          totals.map((secs) => el('td', { class: 'num' }, fmt(secs))))))));
+    return section;
   }
 
   // ---- Devices tab -------------------------------------------------------------------
@@ -582,6 +631,10 @@
       check('Show ProPresenter timers', s.display, 'showTimers'),
       check('Show order of service', s.display, 'showOrderOfService'),
       check('Show countdown to the next service time', s.display, 'showServiceCountdown'),
+      el('div', { class: 'grid2' },
+        field('Show item descriptions from Planning Center', el('select', { onchange: (e) => { s.display.itemDescriptions = e.target.value; } },
+          [['announcements', 'Announcements only'], ['all', 'All items'], ['none', 'None']].map(([v, t]) => el('option', { value: v, selected: (s.display.itemDescriptions || 'announcements') === v }, t))),
+          '“Announcements only” shows the description on items with “announcement” in the title.')),
       el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('display') }, 'Save display settings')),
       el('h3', {}, 'Dashboard links'),
       el('ul', { class: 'help' },
@@ -604,7 +657,17 @@
         },
       }, 'Change password')));
 
-    root.replaceChildren(pcoSection, ppSection, displaySection, pwSection);
+    // Live item timing -----------------------------------------------------------------
+    const liveSection = el('div', { class: 'section' },
+      el('h2', {}, 'Live item timing'),
+      el('p', { class: 'help' }, 'Like Services LIVE: when an order-of-service item goes live in ProPresenter, the dashboard starts counting how long you have been on it, and the actual time is saved for each service time. It only records during Planning Center service times, never rehearsals. An item stays live until the next one starts.'),
+      check('Record actual item times', s.live, 'enabled'),
+      el('div', { class: 'grid2' },
+        field('Start recording before each service (minutes)', el('input', { type: 'number', min: 0, max: 120, value: s.live.preRollMinutes, oninput: (e) => { s.live.preRollMinutes = Number(e.target.value); } }), 'Covers pre-service items like the countdown.'),
+        field('Keep recording after each service ends (minutes)', el('input', { type: 'number', min: 0, max: 120, value: s.live.postRollMinutes, oninput: (e) => { s.live.postRollMinutes = Number(e.target.value); } }), 'In case the service runs long.')),
+      el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('live') }, 'Save timing settings')));
+
+    root.replaceChildren(pcoSection, ppSection, liveSection, displaySection, pwSection);
     if (s.pco.hasSecret || s.pco.envCredentials || s.demo) loadServiceTypes();
     loadPlanChoices();
   }

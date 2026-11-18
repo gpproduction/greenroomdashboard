@@ -5,6 +5,8 @@ A self-hosted mic and in-ear-monitor assignment board for church production team
 - **Planning Center Services**: pulls the current or next plan, with its order of service (including each item's leader), service times, and scheduled team members with their Planning Center photos.
 - **Assignments**: you assign wireless mics and IEMs to each person in the admin backend. Each mic can be linked to an IEM, so picking the mic brings its IEM along, and you can still change the IEM on its own. Each person's last choice is remembered and pre-fills future plans. Only people with something assigned appear on the board.
 - **ProPresenter 7**: shows live timers and highlights the item that's currently on screen.
+- **Live item timing** (like Services LIVE): when an item goes live in ProPresenter, the dashboard counts how long you've been on it (planned vs actual, plus a running service total). Actual times are saved per service time, and only during Planning Center *service* times, never rehearsals. Admin → Assign shows a planned-vs-actual report. Try it with `DEMO=1 DEMO_LIVE=1 npm start`.
+- **Announcements**: the description from Planning Center is shown under announcement items (configurable).
 - **Dashboard**: a full-screen page for Chrome on a greenroom TV. It updates live over a WebSocket, reconnects by itself, and reloads itself when the server is updated.
 
 ```
@@ -121,6 +123,7 @@ server/
   sync.js          polling loop, active-plan selection, cache
   propresenter.js  ProPresenter 7 API poller (timers, active presentation)
   roster.js        merges plan people + devices + assignments, detects conflicts
+  live.js          live item timing (ProPresenter → plan item, service-time windows)
   store.js         JSON file persistence
   env.js           loads .env before anything else
   auth.js          admin password + sessions
