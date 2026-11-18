@@ -58,8 +58,8 @@ function dashboardState() {
 // --- HTTP ----------------------------------------------------------------------
 const app = express();
 app.disable('x-powered-by');
-// Cloudflare Tunnel (cloudflared) connects from this machine and sets X-Forwarded-*.
-// Trusting loopback lets req.ip / req.secure reflect the real visitor and HTTPS.
+// If a reverse proxy on this machine is ever put in front (it sets X-Forwarded-*),
+// trusting loopback lets req.ip / req.secure reflect the real visitor. Harmless otherwise.
 app.set('trust proxy', 'loopback');
 app.use(express.json({ limit: '1mb' }));
 

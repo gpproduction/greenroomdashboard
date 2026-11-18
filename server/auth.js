@@ -61,7 +61,7 @@ function isValidSession(req) {
   return true;
 }
 
-// `Secure` when the browser reached us over HTTPS (e.g. through Cloudflare Tunnel).
+// `Secure` when the browser reached us over HTTPS (e.g. via a reverse proxy).
 function cookieAttrs(req, maxAge) {
   return `HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${req.secure ? '; Secure' : ''}`;
 }

@@ -16,9 +16,9 @@ A self-hosted mic and in-ear-monitor assignment board for church production team
                      └──────────────────────────┘
 ```
 
-The server **must run on the church network**, because ProPresenter's API is only reachable locally. To reach it from anywhere, put Cloudflare Tunnel with a Google Workspace or email sign-in in front of it.
+The server **must run on the church network**, because ProPresenter's API is only reachable locally. Any device on the church network (including Wi-Fi) can open it.
 
-**Installing on the church Mac (with remote access): see [docs/DEPLOY-MAC.md](docs/DEPLOY-MAC.md).**
+**Installing on the church Mac: see [docs/DEPLOY-MAC.md](docs/DEPLOY-MAC.md).**
 
 ## Quick start
 
@@ -132,5 +132,5 @@ public/
 
 - The dashboard is read-only and open to anyone on the network. Everything under `/api/admin` requires the admin password.
 - The Planning Center secret is stored in `data/db.json`, or comes from `PCO_SECRET` in the environment. Keep the server on a trusted network.
-- Never forward port 8080 on the router. For remote access, use Cloudflare Tunnel with Cloudflare Access ([docs/DEPLOY-MAC.md](docs/DEPLOY-MAC.md#5-access-from-anywhere-with-cloudflare)), or Tailscale.
+- Green Room is meant for the church network only. Don't forward port 8080 on the router.
 - Admin logins persist across restarts (stored hashed in `data/db.json`). Changing the admin password signs out every other device.

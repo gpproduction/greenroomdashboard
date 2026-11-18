@@ -127,5 +127,5 @@ cat <<MSG
   Logs:       ${APP_DIR}/logs/greenroom.log
   Update:     ./deploy/macos/update.sh
   Remove:     ./deploy/macos/uninstall.sh
-  Remote access (Cloudflare Tunnel): see docs/DEPLOY-MAC.md
+  Full guide: docs/DEPLOY-MAC.md
 MSG
