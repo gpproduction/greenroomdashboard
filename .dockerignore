@@ -3,3 +3,7 @@ data
 data-demo
 .git
 .env
+logs
+deploy
+docs
+test

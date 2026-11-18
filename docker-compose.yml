@@ -1,14 +1,18 @@
+# Green Room — Docker / Synology Container Manager setup.
+# Works with older Compose versions (Synology Container Manager).
 services:
   greenroom:
     build: .
+    image: greenroom-dashboard:latest
     container_name: greenroom-dashboard
     restart: unless-stopped
     ports:
+      # Change the left number if 8080 is already used on the NAS, e.g. "8090:8080".
       - "8080:8080"
     volumes:
+      # Settings, devices and assignments live here (data/db.json). Back this folder up.
       - ./data:/data
-    env_file:
-      - path: .env
-        required: false
     environment:
       TZ: America/New_York
+      # Set DEMO: "1" to try it with sample data.
+      DEMO: "0"

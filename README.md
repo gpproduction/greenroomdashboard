@@ -18,7 +18,9 @@ A self-hosted mic and in-ear-monitor assignment board for church production team
 
 The server **must run on the church network**, because ProPresenter's API is only reachable locally. Any device on the church network (including Wi-Fi) can open it.
 
-**Installing on the church Mac: see [docs/DEPLOY-MAC.md](docs/DEPLOY-MAC.md).**
+**Installing at church:**
+- **Synology NAS** (recommended): [docs/DEPLOY-SYNOLOGY.md](docs/DEPLOY-SYNOLOGY.md). It runs in Container Manager, with no Terminal needed.
+- **Mac**: [docs/DEPLOY-MAC.md](docs/DEPLOY-MAC.md).
 
 ## Quick start
 
@@ -36,7 +38,7 @@ cp .env.example .env    # optional: set ADMIN_PASSWORD, PCO_APP_ID, PCO_SECRET
 npm start
 ```
 
-Or with Docker:
+Or with Docker (this is also what the Synology setup uses):
 
 ```bash
 docker compose up -d --build
