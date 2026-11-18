@@ -46,4 +46,12 @@ test('planDetail resolves Planning Center native leaders (person, position, off-
   assert.deepEqual(leaders['With You'], ['Sumer Smith']); // assignable missing from include → per-item fallback
   assert.deepEqual(leaders['Doors Open'], []);
   assert.ok(d.items[0].leaders[0].photo.includes('101'));
+  assert.deepEqual(d.items[1].leaders.map((l) => l.short), ['Sumer', 'Bailee']);
+});
+
+test('leader display name prefers a quoted nickname', async () => {
+  const { shortName } = await import('../server/pco.js');
+  assert.equal(shortName('Mackenzie "Kenzie" Cheatham'), 'Kenzie');
+  assert.equal(shortName('Nico Curtis'), 'Nico');
+  assert.equal(shortName(''), '');
 });

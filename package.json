@@ -1,6 +1,6 @@
 {
   "name": "greenroom-dashboard",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "Mic/IEM assignment and ProPresenter timer dashboard driven by Planning Center Services.",
   "type": "module",

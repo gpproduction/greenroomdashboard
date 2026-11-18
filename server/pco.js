@@ -165,10 +165,17 @@ async function teamPositions(serviceTypeId) {
   return map;
 }
 
+/** Name to show for a leader: the quoted nickname if there is one, else the first name. */
+export function shortName(name) {
+  const nick = /["“”]([^"“”]+)["“”]/.exec(String(name || ''))?.[1];
+  if (nick) return nick.trim();
+  return String(name || '').trim().split(/\s+/)[0] || '';
+}
+
 const personCache = new Map(); // personId -> name (for leaders not scheduled on the plan)
 async function personName(id) {
   if (personCache.has(id)) return personCache.get(id);
-  const res = await request(`/people/${id}`);
+  const res = await request(`/people/${id}`, { 'fields[Person]': 'first_name,last_name,full_name' });
   const a = res.data?.attributes || {};
   const name = a.full_name || [a.first_name, a.last_name].filter(Boolean).join(' ') || null;
   personCache.set(id, name);
@@ -199,6 +206,7 @@ export async function resolveLeaders(assignmentsByItem, members, { positions, lo
         }
       }
     }
+    for (const l of leaders) l.short = shortName(l.name);
     out.set(itemId, leaders);
   }
   return out;

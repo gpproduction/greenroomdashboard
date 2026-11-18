@@ -190,7 +190,7 @@
   function leaderCell(item) {
     const leaders = item.leaders || [];
     if (!leaders.length) return el('span', { class: 'lead' }, item.leader || '');
-    const first = (n) => String(n).trim().split(/\s+/)[0];
+    const first = (l) => l.short || String(l.name).trim().split(/\s+/)[0]; // server sends nickname or first name
     return el('span', { class: 'lead people' },
       el('span', { class: 'faces' }, leaders.slice(0, 3).map((l) => {
         if (!hasPhoto(l.photo)) return el('span', { class: 'face' }, initials(l.name));
@@ -198,7 +198,7 @@
         img.onerror = () => img.replaceWith(el('span', { class: 'face' }, initials(l.name)));
         return img;
       })),
-      el('span', { class: 'names' }, leaders.map((l) => first(l.name)).join(' & ')));
+      el('span', { class: 'names' }, leaders.map(first).join(' & ')));
   }
 
   function renderOrder() {
