@@ -51,9 +51,14 @@ function dashboardState() {
   const roster = buildRoster(detail, db);
   const { display } = db.settings;
   const leaderCats = String(db.settings.pco.leaderNoteCategories || '').split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
-  const items = (detail?.items || []).map(({ notes, ...item }) => ({
+  const useNative = db.settings.pco.useNativeLeaders !== false;
+  const items = (detail?.items || []).map(({ notes, leaders, ...item }) => ({
     ...item,
-    leader: (notes || []).filter((n) => leaderCats.includes(String(n.category).toLowerCase())).map((n) => n.content.trim()).filter(Boolean).join(', ') || null,
+    // Planning Center's own Leader column (people/positions), when it has someone…
+    leaders: useNative && leaders?.length ? leaders : [],
+    // …otherwise the chosen item-note column as text (e.g. a custom "Lead" column).
+    leader: (useNative && leaders?.length) ? null
+      : (notes || []).filter((n) => leaderCats.includes(String(n.category).toLowerCase())).map((n) => n.content.trim()).filter(Boolean).join(', ') || null,
   }));
   return {
     bootId: BOOT_ID,

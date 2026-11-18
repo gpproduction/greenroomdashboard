@@ -3,7 +3,7 @@
 import * as store from './store.js';
 import * as demo from './demo.js';
 
-const BASE = 'https://api.planningcenteronline.com/services/v2';
+const BASE = process.env.PCO_BASE_URL || 'https://api.planningcenteronline.com/services/v2'; // override only for testing
 
 export function isDemo() {
   return process.env.DEMO === '1';
@@ -145,12 +145,71 @@ export function pickActivePlan(plans, now = Date.now()) {
   }) || null;
 }
 
+// ---- item leaders (Planning Center's native "Leader" column) ----------------------------
+// Leaders are ItemAssignments on each item, pointing at a Person or a TeamPosition.
+// A TeamPosition leader means "whoever is scheduled in that position on this plan".
+
+const positionCache = new Map(); // serviceTypeId -> { at, map: positionId -> { name, teamId } }
+async function teamPositions(serviceTypeId) {
+  const hit = positionCache.get(serviceTypeId);
+  if (hit && Date.now() - hit.at < 10 * 60_000) return hit.map;
+  const { data, included } = await requestAll(`/service_types/${serviceTypeId}/teams`, { include: 'team_positions' });
+  const map = new Map();
+  for (const team of data) {
+    for (const ref of team.relationships?.team_positions?.data || []) {
+      const pos = included.find((r) => r.type === 'TeamPosition' && r.id === ref.id);
+      if (pos) map.set(pos.id, { name: pos.attributes.name, teamId: team.id });
+    }
+  }
+  positionCache.set(serviceTypeId, { at: Date.now(), map });
+  return map;
+}
+
+const personCache = new Map(); // personId -> name (for leaders not scheduled on the plan)
+async function personName(id) {
+  if (personCache.has(id)) return personCache.get(id);
+  const res = await request(`/people/${id}`);
+  const a = res.data?.attributes || {};
+  const name = a.full_name || [a.first_name, a.last_name].filter(Boolean).join(' ') || null;
+  personCache.set(id, name);
+  return name;
+}
+
+/**
+ * Resolve each item's assignments to people. Pure apart from the two lookups passed in.
+ * assignmentsByItem: itemId -> [{ type: 'Person'|'TeamPosition', id }]
+ */
+export async function resolveLeaders(assignmentsByItem, members, { positions, lookupPerson }) {
+  const byPerson = new Map(members.filter((m) => m.personId).map((m) => [m.personId, m]));
+  const out = new Map();
+  for (const [itemId, refs] of assignmentsByItem) {
+    const leaders = [];
+    const add = (l) => { if (l.name && !leaders.some((x) => x.name === l.name)) leaders.push(l); };
+    for (const ref of refs) {
+      if (ref.type === 'Person') {
+        const m = byPerson.get(ref.id);
+        add({ name: m?.name || await lookupPerson(ref.id).catch(() => null), photo: m?.photo || null, personId: ref.id });
+      } else if (ref.type === 'TeamPosition') {
+        const pos = positions.get(ref.id);
+        if (!pos) continue;
+        for (const m of members) {
+          if (m.status !== 'D' && m.position === pos.name && (!pos.teamId || m.teamId === pos.teamId)) {
+            add({ name: m.name, photo: m.photo, personId: m.personId, position: pos.name });
+          }
+        }
+      }
+    }
+    out.set(itemId, leaders);
+  }
+  return out;
+}
+
 export async function planDetail(serviceTypeId, planId) {
   if (isDemo()) return demo.planDetail(planId);
   const base = `/service_types/${serviceTypeId}/plans/${planId}`;
   const [planRes, itemsRes, membersRes] = await Promise.all([
     request(base, { include: 'plan_times,series' }),
-    requestAll(`${base}/items`, { include: 'item_notes' }),
+    requestAll(`${base}/items`, { include: 'item_notes,item_assignments' }),
     requestAll(`${base}/team_members`, { include: 'team' }),
   ]);
 
@@ -176,6 +235,27 @@ export async function planDetail(serviceTypeId, planId) {
     }))
     .sort((a, b) => a.sequence - b.sequence);
 
+  // Item leaders (assignments → people). The docs disagree on whether included
+  // assignments carry their `assignable`; if not, ask per item, and log if still missing.
+  const assignmentsByItem = new Map();
+  const missing = [];
+  for (const i of itemsRes.data) {
+    const assignRefs = i.relationships?.item_assignments?.data || [];
+    const refs = assignRefs.map((ref) => noteInc.get(`ItemAssignment:${ref.id}`)?.relationships?.assignable?.data).filter(Boolean);
+    if (refs.length) assignmentsByItem.set(i.id, refs);
+    else if (assignRefs.length) missing.push(i.id);
+  }
+  for (const itemId of missing) {
+    try {
+      const { data } = await requestAll(`${base}/items/${itemId}/item_assignments`);
+      const refs = data.map((a) => a.relationships?.assignable?.data).filter(Boolean);
+      if (refs.length) assignmentsByItem.set(itemId, refs);
+      else console.warn(`[pco] item ${itemId} has leader assignments but no assignable person/position in the API response`);
+    } catch (err) {
+      console.warn(`[pco] could not read leaders for item ${itemId}: ${err.message}`);
+    }
+  }
+
   const members = membersRes.data.map((m) => {
     const teamId = m.relationships?.team?.data?.id;
     return {
@@ -188,6 +268,13 @@ export async function planDetail(serviceTypeId, planId) {
       teamName: teamInc.get(`Team:${teamId}`)?.attributes?.name || 'Team',
     };
   });
+
+  if (assignmentsByItem.size) {
+    const needsPositions = [...assignmentsByItem.values()].flat().some((r) => r.type === 'TeamPosition');
+    const positions = needsPositions ? await teamPositions(serviceTypeId).catch(() => new Map()) : new Map();
+    const leaders = await resolveLeaders(assignmentsByItem, members, { positions, lookupPerson: personName });
+    for (const item of items) item.leaders = leaders.get(item.id) || [];
+  }
 
   return {
     plan: {

@@ -174,7 +174,7 @@ body.layout-timers .timer .time { font-size: 7rem; }
 .order ol { list-style: none; margin: 0; padding: 0; }
 .order li {
   /* item | leader | time */
-  display: grid; grid-template-columns: minmax(0, 1fr) 8.5rem 6.2rem; gap: 0.8rem; align-items: start;
+  display: grid; grid-template-columns: minmax(0, 1fr) 10rem 6.2rem; gap: 0.8rem; align-items: start;
   padding: 0.45rem 0.6rem; border-radius: 9px; font-size: 1.3rem;
 }
 .order li.cols {
@@ -189,6 +189,18 @@ body.layout-timers .timer .time { font-size: 7rem; }
 }
 .order li .lead { color: var(--brand-text); font-size: 1.1rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-top: 0.1rem; }
 .order li.active .lead { color: #fff; }
+.order li .lead.people { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+.order li .lead .faces { display: flex; flex: none; }
+.order li .lead .face {
+  width: 1.7rem; height: 1.7rem; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--panel); margin-left: -0.45rem;
+  background: var(--panel-2); color: var(--muted); font-size: 0.65rem; font-weight: 700;
+  display: inline-grid; place-items: center;
+}
+.order li .lead .face:first-child { margin-left: 0; }
+.order li.active .lead .face { border-color: var(--brand); }
+.order li .lead .names { min-width: 0; white-space: normal; line-height: 1.15; overflow-wrap: anywhere; }
+.order li .lead.people { white-space: normal; }
 .order li .len { color: var(--muted); font-variant-numeric: tabular-nums; }
 .order li .key { color: var(--muted); font-size: 0.85rem; margin-left: 0.45rem; }
 .order li.active { background: var(--brand); outline: 1px solid var(--brand-line); font-weight: 650; }

@@ -22,7 +22,8 @@ function defaults() {
         pinnedServiceTypeId: null,
         pollSeconds: 60,
         hideDeclined: true,
-        leaderNoteCategories: 'Lead', // item note categories holding the item's leader (comma-separated)
+        useNativeLeaders: true, // Planning Center's native "Leader" column (item assignments)
+        leaderNoteCategories: 'Lead', // fallback: item note categories holding a leader as text (comma-separated)
       },
       propresenter: {
         enabled: false,

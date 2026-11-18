@@ -620,7 +620,7 @@
         oninput: (e) => setChosen([...chosen().filter((c) => names.has(c)), ...e.target.value.split(',').map((x) => x.trim()).filter(Boolean)]),
       });
       leaderBox.replaceChildren(
-        el('p', { class: 'help' }, `Which Planning Center item-note column holds who leads each item. These are the columns used in the current plan${data.plan ? ` (${data.plan})` : ''}:`),
+        el('p', { class: 'help' }, `Fallback: for items with no one in the Leader column, show the text from one of these item-note columns instead. These are the columns used in the current plan${data.plan ? ` (${data.plan})` : ''}:`),
         data.categories.length
           ? el('div', {}, data.categories.map((c) => el('label', { class: 'check', style: 'align-items:flex-start' },
             el('input', {
@@ -671,6 +671,7 @@
         field('Refresh every (seconds)', el('input', { type: 'number', min: 20, value: s.pco.pollSeconds, oninput: (e) => { s.pco.pollSeconds = Number(e.target.value); } }))),
       check('Hide people who declined', s.pco, 'hideDeclined'),
       el('h3', {}, 'Leader column'),
+      check('Use Planning Center’s Leader column (the people or positions you pick in the plan)', s.pco, 'useNativeLeaders'),
       leaderBox,
       el('div', { class: 'row', style: 'margin-top:0.8rem' }, el('button', { class: 'primary', onclick: () => saveSection('pco') }, 'Save Planning Center settings')),
     );

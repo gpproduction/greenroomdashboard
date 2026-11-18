@@ -185,6 +185,22 @@
     return secs;
   }
 
+  // Leader column: Planning Center's native leaders (small photos + first names),
+  // or the fallback note-column text.
+  function leaderCell(item) {
+    const leaders = item.leaders || [];
+    if (!leaders.length) return el('span', { class: 'lead' }, item.leader || '');
+    const first = (n) => String(n).trim().split(/\s+/)[0];
+    return el('span', { class: 'lead people' },
+      el('span', { class: 'faces' }, leaders.slice(0, 3).map((l) => {
+        if (!hasPhoto(l.photo)) return el('span', { class: 'face' }, initials(l.name));
+        const img = el('img', { class: 'face', src: l.photo, alt: '', referrerpolicy: 'no-referrer' });
+        img.onerror = () => img.replaceWith(el('span', { class: 'face' }, initials(l.name)));
+        return img;
+      })),
+      el('span', { class: 'names' }, leaders.map((l) => first(l.name)).join(' & ')));
+  }
+
   function renderOrder() {
     const panel = $('order-panel');
     const list = $('order');
@@ -238,7 +254,7 @@
         el('span', {},
           item.title, item.key ? el('span', { class: 'key' }, item.key) : null,
           showDescription(item) ? el('span', { class: 'desc' }, item.description) : null),
-        el('span', { class: 'lead' }, item.leader || ''),
+        leaderCell(item),
         timing));
     }
     if (hasActuals && actualTotal) {
