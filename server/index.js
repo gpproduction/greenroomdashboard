@@ -206,6 +206,40 @@ admin.put('/plans/:planId/assignments/:key', (req, res) => {
   res.json({ ok: true, changes });
 });
 
+// Live tab: what ProPresenter shows, what it matched, and the timing state.
+admin.get('/live', (req, res) => {
+  const db = store.get();
+  const detail = sync.getActive();
+  const p = pp.getState();
+  const now = Date.now();
+  const win = live.currentWindow(db, detail, now);
+  res.json({
+    now,
+    plan: detail ? { id: detail.plan.id, dates: detail.plan.dates, serviceTypeName: detail.plan.serviceTypeName, times: detail.plan.times } : null,
+    items: detail?.items.map(({ id, title, type, length, position }) => ({ id, title, type, length, position })) || [],
+    propresenter: { enabled: db.settings.propresenter.enabled || pco.isDemo(), connected: p.connected, error: p.error, activePresentation: p.activePresentation },
+    matchedItemId: detail ? live.matchItem(detail.items, p.activePresentation) : null,
+    window: win ? { id: win.id, test: Boolean(win.test), start: win.start, end: win.end } : null,
+    test: db.liveTest,
+    summary: live.summary(detail, db, now),
+    testRecorded: Boolean(detail && db.live[detail.plan.id]?.test),
+  });
+});
+
+// Production test mode on/off.
+admin.post('/live/test', (req, res) => {
+  const minutes = Math.min(240, Math.max(5, Number(req.body?.minutes) || 60));
+  const now = Date.now();
+  store.update((db) => { db.liveTest = { startedAt: now, until: now + minutes * 60_000 }; }, { topic: 'live' });
+  live.tick();
+  res.json({ ok: true, until: store.get().liveTest.until });
+});
+admin.delete('/live/test', (req, res) => {
+  store.update((db) => { db.liveTest = null; }, { topic: 'live' });
+  live.tick(); // closes the running test item
+  res.json({ ok: true });
+});
+
 // Clear recorded item times for one service time of a plan.
 admin.delete('/plans/:planId/live/:planTimeId', (req, res) => {
   store.update((db) => {

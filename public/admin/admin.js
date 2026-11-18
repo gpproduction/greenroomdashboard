@@ -83,7 +83,7 @@
 
   // ---- tabs --------------------------------------------------------------------
   let currentTab = 'assign';
-  const renderers = { assign: renderAssign, devices: renderDevices, settings: renderSettings };
+  const renderers = { assign: renderAssign, devices: renderDevices, live: renderLive, settings: renderSettings };
   $('tabs').addEventListener('click', (e) => {
     const tab = e.target.closest('button')?.dataset.tab;
     if (!tab) return;
@@ -91,6 +91,8 @@
   });
   function switchTab(tab) {
     currentTab = tab;
+    clearInterval(livePoll); // the Live tab polls only while it's open
+    livePoll = null;
     for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('active', b.dataset.tab === tab);
     for (const name of Object.keys(renderers)) $(`tab-${name}`).classList.toggle('hidden', name !== tab);
     location.hash = tab;
@@ -333,6 +335,114 @@
           el('td', { class: 'num' }, fmt(items.filter((i) => i.position === 'during').reduce((a, i) => a + (i.length || 0), 0))),
           totals.map((secs) => el('td', { class: 'num' }, fmt(secs))))))));
     return section;
+  }
+
+  // ---- Live tab ----------------------------------------------------------------------
+  // Shows what ProPresenter has on screen, which plan item that matched, and the item
+  // timing as it happens. Production test mode records outside service times so the
+  // team can click through ProPresenter and check that timings work.
+  let livePoll = null;
+  const fmtDur = (secs) => {
+    secs = Math.max(0, Math.round(secs || 0));
+    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+    return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+  };
+  const clock = (ts) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: churchTz() });
+
+  async function renderLive() {
+    const root = $('tab-live');
+    const minutesSel = el('select', {}, [[30, '30 minutes'], [60, '1 hour'], [120, '2 hours']].map(([v, t]) => el('option', { value: v, selected: v === 60 }, t)));
+    const statusBox = el('div');
+    const tableBox = el('div');
+    const controls = el('div', { class: 'row' });
+    root.replaceChildren(
+      el('div', { class: 'section' },
+        el('h2', {}, 'Production test'),
+        el('p', { class: 'help' }, 'Click through ProPresenter and watch item times update here and on the dashboard, any time — not just during a service. Test times are saved separately and never mix with real service times. The dashboard shows a “TEST MODE” badge while it’s on, and it turns itself off when the time runs out. During a real service time, real recording always takes priority.'),
+        controls),
+      el('div', { class: 'section' }, el('h2', {}, 'Right now'), statusBox),
+      el('div', { class: 'section' }, el('h2', {}, 'Item times'), tableBox));
+
+    let busy = false;
+    async function refresh() {
+      if (busy) return;
+      busy = true;
+      try {
+        const d = await api('/api/admin/live');
+        draw(d);
+      } catch (err) {
+        statusBox.replaceChildren(el('p', { class: 'error' }, err.message));
+      } finally { busy = false; }
+    }
+
+    function draw(d) {
+      const testOn = Boolean(d.test && d.test.until > d.now);
+      const realWindow = d.window && !d.window.test;
+
+      // Controls
+      controls.replaceChildren(
+        testOn
+          ? el('span', { class: 'badge test' }, `TEST MODE · on until ${clock(d.test.until)}`)
+          : el('span', { class: 'badge' }, 'Test mode off'),
+        testOn
+          ? el('button', { class: 'danger', onclick: async () => { await api('/api/admin/live/test', { method: 'DELETE' }); toast('Test mode off'); refresh(); } }, 'Stop test')
+          : el('span', { class: 'row' }, minutesSel, el('button', {
+            class: 'primary',
+            disabled: !d.plan,
+            onclick: async () => {
+              await api('/api/admin/live/test', { method: 'POST', body: { minutes: Number(minutesSel.value) } });
+              toast('Test mode on — click through ProPresenter');
+              refresh();
+            },
+          }, 'Start production test')),
+        d.testRecorded ? el('button', {
+          class: 'ghost danger',
+          onclick: async () => {
+            if (!confirm('Clear all test times for this plan?')) return;
+            await api(`/api/admin/plans/${d.plan.id}/live/test`, { method: 'DELETE' });
+            toast('Test times cleared');
+            refresh();
+          },
+        }, 'Clear test times') : null);
+
+      // Status
+      const matched = d.items.find((i) => i.id === d.matchedItemId);
+      const ppLine = !d.propresenter.enabled
+        ? el('span', { class: 'error' }, 'ProPresenter is not turned on in Settings.')
+        : d.propresenter.connected
+          ? el('span', { class: 'ok-text' }, '● Connected')
+          : el('span', { class: 'error' }, `● Not connected${d.propresenter.error ? ` — ${d.propresenter.error}` : ''}`);
+      const mode = realWindow
+        ? `Recording the ${clock(d.window.start)} service`
+        : testOn ? 'Recording test times' : 'Not recording (outside service times — start a production test to try it)';
+      statusBox.replaceChildren(el('dl', { class: 'facts' },
+        el('dt', {}, 'Plan on dashboard'), el('dd', {}, d.plan ? `${d.plan.dates} · ${d.plan.serviceTypeName || ''}` : 'None'),
+        el('dt', {}, 'ProPresenter'), el('dd', {}, ppLine),
+        el('dt', {}, 'On screen now'), el('dd', {}, d.propresenter.activePresentation || el('span', { class: 'muted' }, 'Nothing')),
+        el('dt', {}, 'Matched item'), el('dd', {},
+          matched ? el('strong', {}, matched.title)
+            : d.propresenter.activePresentation ? el('span', { class: 'warn-text' }, 'No match — rename the presentation (or the plan item) so the titles agree')
+              : el('span', { class: 'muted' }, '—')),
+        el('dt', {}, 'Timing'), el('dd', {}, mode)));
+
+      // Item times for whatever is being shown (test, current service, or last service)
+      const sum = d.summary;
+      const label = !sum?.planTimeId ? null : sum.test ? 'Test' : clock(sum.startsAt);
+      const running = (id) => (sum?.recording && sum.currentItemId === id ? (d.now - sum.currentStartedAt) / 1000 : 0);
+      tableBox.replaceChildren(!d.items.length ? el('p', { class: 'muted' }, 'No plan loaded.') : el('div', { class: 'table-wrap' }, el('table', { class: 'timing-table' },
+        el('thead', {}, el('tr', {}, el('th', {}, 'Item'), el('th', {}, 'Planned'), el('th', {}, label ? `Actual (${label})` : 'Actual'))),
+        el('tbody', {}, d.items.filter((i) => i.type !== 'header').map((i) => {
+          const secs = (sum?.actuals?.[i.id] || 0) + running(i.id);
+          const isLive = sum?.recording && sum.currentItemId === i.id;
+          return el('tr', { class: isLive ? 'live-row' : '' },
+            el('td', {}, i.title, isLive ? el('span', { class: 'badge ' + (sum.test ? 'test' : 'live') }, sum.test ? 'TEST' : 'LIVE') : null),
+            el('td', { class: 'num' }, i.length ? fmtDur(i.length) : ''),
+            el('td', { class: 'num' + (i.length && secs > i.length ? ' over' : '') }, secs ? fmtDur(secs) : ''));
+        })))));
+    }
+
+    await refresh();
+    livePoll = setInterval(refresh, 1000);
   }
 
   // ---- Devices tab -------------------------------------------------------------------

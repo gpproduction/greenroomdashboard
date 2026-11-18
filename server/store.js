@@ -56,6 +56,7 @@ function defaults() {
     sessions: {}, // sha256(token) -> expiresAt (admin logins)
     live: {}, // planId -> planTimeId -> { items: { itemId: seconds }, segments: [...] }
     liveCurrent: null, // { planId, planTimeId, itemId, startedAt, windowEnd } while an item is live
+    liveTest: null, // { startedAt, until } while production test mode is on
   };
 }
 

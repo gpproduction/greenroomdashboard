@@ -203,7 +203,11 @@
     // Header badge: LIVE while recording, otherwise which service's actual times are shown.
     const status = $('live-status');
     status.className = 'live-status';
-    if (live?.recording) {
+    if (live?.test) {
+      // Production test mode (started from admin): obvious so nobody mistakes it for a real service.
+      status.classList.add('on', 'test');
+      status.replaceChildren(el('i', { class: 'rec' }), 'TEST MODE');
+    } else if (live?.recording) {
       status.classList.add('on');
       status.replaceChildren(el('i', { class: 'rec' }), `LIVE · ${fmtTime(live.startsAt)}`);
     } else if (hasActuals && live.startsAt) {

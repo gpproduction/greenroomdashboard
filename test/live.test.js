@@ -73,3 +73,19 @@ test('matchItem prefers exact titles and skips headers', () => {
   assert.equal(matchItem(items, 'WORSHIP'), 'b');
   assert.equal(matchItem(items, 'Walk-in Loop'), null);
 });
+
+import { testWindow, currentWindow } from '../server/live.js';
+
+test('test mode records under "test", during rehearsal too, and expires', () => {
+  const db = { settings: { live: { enabled: true, ...cfg } }, liveTest: { startedAt: T(13, 0), until: T(14, 0) } };
+  const detail = { plan: { times } };
+  assert.equal(currentWindow(db, detail, T(13, 10)).id, 'test'); // during sound check
+  assert.equal(currentWindow(db, detail, T(13, 50)).id, 's9'); // real service window wins
+  assert.equal(testWindow(db.liveTest, T(14, 1)), null); // expired
+  assert.equal(currentWindow({ ...db, liveTest: null }, detail, T(13, 10)), null);
+});
+
+test('test mode works even when live recording is turned off', () => {
+  const db = { settings: { live: { enabled: false, ...cfg } }, liveTest: { startedAt: T(14, 0), until: T(15, 0) } };
+  assert.equal(currentWindow(db, { plan: { times } }, T(14, 30)).id, 'test');
+});

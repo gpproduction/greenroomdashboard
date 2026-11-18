@@ -143,6 +143,13 @@ td.conflict select { border-color: var(--bad); }
 .timing-table tr.total td { font-weight: 700; border-top: 2px solid var(--line); }
 .timing-table .badge { margin-left: 0.4rem; }
 
+.badge.test { color: #8a5a00; border-color: #d99a1e; background: #fff4d6; font-weight: 700; }
+.live-row td { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+.warn-text { color: var(--warn); }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.45rem 1.2rem; margin: 0; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }
+
 .toast {
   position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
   background: #222; color: #fff; padding: 0.55rem 1rem; border-radius: 10px; font-size: 0.9rem;

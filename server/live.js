@@ -55,6 +55,22 @@ export function serviceWindow(times, now, { preRollMinutes = 20, postRollMinutes
 }
 
 /**
+ * Production test mode: a temporary recording window starting now, recorded under
+ * the pseudo service time "test" so real service data is never touched.
+ */
+export function testWindow(liveTest, now) {
+  if (!liveTest || now > liveTest.until) return null;
+  return { id: 'test', start: liveTest.startedAt, end: liveTest.until, from: liveTest.startedAt, to: liveTest.until, test: true };
+}
+
+/** Real service windows always win; test mode only applies outside them (e.g. during rehearsal). */
+export function currentWindow(db, detail, now) {
+  if (!detail) return null;
+  const real = db.settings.live.enabled ? serviceWindow(detail.plan.times, now, db.settings.live) : null;
+  return real || testWindow(db.liveTest, now);
+}
+
+/**
  * One step of the timing state machine.
  * current: { planId, planTimeId, itemId, startedAt, windowEnd } | null
  * Returns the new current item and any finished segments to record.
@@ -81,9 +97,9 @@ export function step(current, { planId, window, matchedItemId, now }) {
 
 export function tick(now = Date.now()) {
   const db = store.get();
-  const cfg = db.settings.live;
+  if (db.liveTest && now > db.liveTest.until) store.update((d) => { d.liveTest = null; }, { topic: 'live' }); // test mode expired
   const detail = sync.getActive();
-  const win = cfg.enabled && detail ? serviceWindow(detail.plan.times, now, cfg) : null;
+  const win = currentWindow(db, detail, now);
   const ppState = pp.getState();
   const matched = win && ppState.connected ? matchItem(detail.items, ppState.activePresentation) : null;
   const res = step(db.liveCurrent, { planId: detail?.plan.id, window: win, matchedItemId: matched, now });
@@ -106,7 +122,7 @@ export function summary(detail, db, now = Date.now()) {
   const records = db.live[planId] || {};
   const services = (detail.plan.times || []).filter((t) => t.type === 'service');
   const cur = db.liveCurrent?.planId === planId ? db.liveCurrent : null;
-  const win = db.settings.live.enabled ? serviceWindow(detail.plan.times, now, db.settings.live) : null;
+  const win = currentWindow(db, detail, now);
   let shownId = cur?.planTimeId || win?.id || null;
   if (!shownId) {
     // Between/after services: show the most recent service time that has recordings.
@@ -117,6 +133,8 @@ export function summary(detail, db, now = Date.now()) {
   return {
     enabled: db.settings.live.enabled,
     planTimeId: shownId,
+    test: shownId === 'test',
+    testUntil: db.liveTest?.until || null,
     startsAt: t?.startsAt || null,
     inWindow: Boolean(win),
     recording: Boolean(cur),

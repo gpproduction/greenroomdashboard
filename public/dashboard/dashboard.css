@@ -197,6 +197,8 @@ body.layout-timers .timer .time { font-size: 7rem; }
 .panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; }
 .live-status { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .live-status.on { color: #fff; background: var(--brand); border: 1px solid var(--brand-line); padding: 0.15rem 0.55rem; border-radius: 99px; }
+.live-status.on.test { background: #5a4310; border-color: var(--warn); color: #ffe2a8; }
+.live-status.on.test .rec { background: var(--warn); }
 .live-status .rec { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #ff4d4d; margin-right: 0.4rem; vertical-align: 0.05rem; animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.3; } }
 .order li.prepost { color: var(--muted); }
