@@ -1,5 +1,7 @@
 // Turns a Planning Center plan + local assignments into the roster shown on screen.
 
+export const FIELDS = ['mic', 'iem', 'other']; // device slots per person ("other" = acoustic pack, violin mic…)
+
 /** Person key used for assignments. PCO person id when available, else name. */
 export function personKey(member) {
   return member.personId ? `p:${member.personId}` : `n:${member.name.toLowerCase()}`;
@@ -9,6 +11,18 @@ export function personKey(member) {
  * Resolve a person's device for a plan: an explicit per-plan choice wins
  * (including an explicit "none" = null); otherwise fall back to their default.
  */
+/** Key for a person's "show on dashboard" choice — per team, since someone can serve on two. */
+export function visibilityKey(teamId, key) {
+  return `${teamId}|${key}`;
+}
+
+/** Teams whose members show on the dashboard by default (setting, else any team named like "Worship"). */
+export function teamShownByDefault(settings, team) {
+  const ids = settings.pco.defaultVisibleTeamIds;
+  if (Array.isArray(ids)) return ids.includes(team.id);
+  return /worship/i.test(team.name || '');
+}
+
 function resolve(planAssign, defaults, key, field) {
   const explicit = planAssign[key];
   if (explicit && field in explicit) return { id: explicit[field], source: 'plan' };
@@ -62,7 +76,7 @@ export function buildRoster(detail, db, { forAdmin = false } = {}) {
     inFilter: !teamFilter.length || teamFilter.includes(t.id) || t.id === '__extras',
     members: [...t.members.values()].map((m) => {
       const row = { ...m };
-      for (const field of ['mic', 'iem']) {
+      for (const field of FIELDS) {
         const r = resolve(planAssign, db.defaults, m.key, field);
         const dev = r.id ? devices.get(r.id) : null;
         row[field] = dev ? { id: dev.id, name: dev.name, channel: dev.channel, frequency: dev.frequency, kind: dev.kind, linkedId: dev.linkedId || null, source: r.source } : null;
@@ -71,13 +85,19 @@ export function buildRoster(detail, db, { forAdmin = false } = {}) {
           usage.get(dev.id).push(m.name);
         }
       }
+      // Show on dashboard: anyone with a device always shows; otherwise their own
+      // checkbox, else the team default (Worship Team on, others off).
+      row.hasDevice = Boolean(row.mic || row.iem || row.other);
+      const explicit = db.visibility?.[visibilityKey(t.id, m.key)];
+      row.showChoice = typeof explicit === 'boolean' ? explicit : (t.id === '__extras' ? true : teamShownByDefault(settings, t));
+      row.shown = row.hasDevice || row.showChoice;
       return row;
     }),
   }));
 
-  // The board only lists people who actually have a mic or IEM this week.
+  // The board lists people with a device, plus anyone set to "show on dashboard".
   const visible = forAdmin ? out : out
-    .map((t) => ({ ...t, members: t.members.filter((m) => m.mic || m.iem) }))
+    .map((t) => ({ ...t, members: t.members.filter((m) => m.shown) }))
     .filter((t) => t.members.length);
 
   const conflicts = [...usage.entries()]

@@ -16,7 +16,7 @@ import * as demo from './demo.js';
 import * as live from './live.js';
 import * as media from './media.js';
 import * as unifi from './unifi.js';
-import { buildRoster, assignmentChanges } from './roster.js';
+import { buildRoster, assignmentChanges, FIELDS, visibilityKey } from './roster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 8080);
@@ -237,7 +237,7 @@ admin.get('/plans/:serviceTypeId/:planId', async (req, res) => {
 admin.put('/plans/:planId/assignments/:key', (req, res) => {
   const { planId, key } = req.params;
   const { field, deviceId, remember = true, linked = true } = req.body || {};
-  if (!['mic', 'iem'].includes(field)) return res.status(400).json({ error: 'field must be mic or iem' });
+  if (!FIELDS.includes(field)) return res.status(400).json({ error: 'field must be mic, iem or other' });
   const value = deviceId || null;
   const changes = assignmentChanges(store.get(), planId, key, field, value, { linked });
 
@@ -290,6 +290,14 @@ admin.delete('/live/test', (req, res) => {
   res.json({ ok: true });
 });
 
+// "Show on dashboard" for one person on one team (remembered across plans).
+admin.put('/visibility', (req, res) => {
+  const { teamId, key, show } = req.body || {};
+  if (!teamId || !key || typeof show !== 'boolean') return res.status(400).json({ error: 'teamId, key and show are required' });
+  store.update((db) => { (db.visibility ??= {})[visibilityKey(teamId, key)] = show; });
+  res.json({ ok: true });
+});
+
 // Clear recorded item times for one service time of a plan.
 admin.delete('/plans/:planId/live/:planTimeId', (req, res) => {
   store.update((db) => {
@@ -325,7 +333,7 @@ const DEVICE_FIELDS = ['type', 'name', 'channel', 'frequency', 'kind', 'notes', 
 function cleanDevice(body) {
   const d = {};
   for (const f of DEVICE_FIELDS) if (f in body) d[f] = typeof body[f] === 'string' ? body[f].slice(0, 120) : body[f];
-  if (d.type && !['mic', 'iem'].includes(d.type)) d.type = 'mic';
+  if (d.type && !FIELDS.includes(d.type)) d.type = 'mic';
   return d;
 }
 admin.get('/devices', (req, res) => res.json(store.get().devices));
@@ -347,7 +355,7 @@ admin.delete('/devices/:id', (req, res) => {
     db.devices = db.devices.filter((d) => d.id !== req.params.id);
     for (const d of db.devices) if (d.linkedId === req.params.id) d.linkedId = null;
     for (const map of [db.defaults, ...Object.values(db.assignments)]) {
-      for (const a of Object.values(map)) for (const f of ['mic', 'iem']) if (a[f] === req.params.id) a[f] = null;
+      for (const a of Object.values(map)) for (const f of FIELDS) if (a[f] === req.params.id) a[f] = null;
     }
   });
   res.json({ ok: true });
@@ -357,7 +365,8 @@ function setLink(db, id, linkedId) {
   const a = db.devices.find((d) => d.id === id);
   if (!a) return false;
   const b = linkedId ? db.devices.find((d) => d.id === linkedId) : null;
-  if (linkedId && (!b || b.type === a.type)) return false;
+  // Only a mic and an IEM can be paired ("other" devices are never linked).
+  if (linkedId && (!b || ![a.type, b.type].includes('mic') || ![a.type, b.type].includes('iem'))) return false;
   // Break any existing pairings either device was part of.
   for (const d of db.devices) if (d.linkedId === a.id || (b && d.linkedId === b.id)) d.linkedId = null;
   a.linkedId = b ? b.id : null;

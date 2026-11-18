@@ -19,16 +19,37 @@ const db = (over = {}) => ({
   assignments: {}, defaults: {}, extras: {}, ...over,
 });
 
-test('merges positions, filters teams/declined, dashboard shows only assigned people', () => {
+test('merges positions, filters teams/declined; Worship shows everyone by default', () => {
   const data = db({ defaults: { 'p:1': { mic: 'm1' }, 'p:3': { mic: 'm1' }, 'p:4': { iem: 'e1' } } });
   const { teams } = buildRoster(detail, data);
-  assert.deepEqual(teams.map((t) => t.name), ['Worship']); // Cy declined, Host team filtered out
-  assert.deepEqual(teams[0].members.map((m) => m.name), ['Ann']); // Bob has nothing assigned
+  assert.deepEqual(teams.map((t) => t.name), ['Worship']); // Cy declined; Host team filtered out
+  assert.deepEqual(teams[0].members.map((m) => m.name), ['Ann', 'Bob']); // Bob has no device but Worship shows everyone
   assert.deepEqual(teams[0].members[0].positions, ['Vocals', 'Keys']);
   assert.equal(teams[0].members[0].status, 'C');
-  // The admin view still lists everyone so they can be assigned.
-  const admin = buildRoster(detail, data, { forAdmin: true });
-  assert.deepEqual(admin.teams.find((t) => t.name === 'Worship').members.map((m) => m.name), ['Ann', 'Bob']);
+});
+
+test('show on dashboard: devices always show; checkbox and team default otherwise', () => {
+  const det = { plan: { id: 'P1' }, members: [
+    { personId: '1', name: 'Ann', teamId: 'w', teamName: 'Worship Team', position: 'Vocals', status: 'C' },
+    { personId: '2', name: 'Bob', teamId: 'w', teamName: 'Worship Team', position: 'Drums', status: 'C' },
+    { personId: '5', name: 'Eve', teamId: 'p', teamName: 'Production', position: 'Camera', status: 'C' },
+    { personId: '6', name: 'Fay', teamId: 'p', teamName: 'Production', position: 'Speaker', status: 'C' },
+  ] };
+  const names = (r) => r.teams.flatMap((t) => t.members.map((m) => m.name));
+  // Bob hidden by his own checkbox, Eve shown by hers, Fay shown because she has an "other" device.
+  const data = db({ defaults: { 'p:6': { other: 'o1' } }, visibility: { 'w|p:2': false, 'p|p:5': true } });
+  data.devices.push({ id: 'o1', type: 'other', name: 'Acoustic Pack' });
+  assert.deepEqual(names(buildRoster(det, data)), ['Ann', 'Eve', 'Fay']);
+  // A device beats an explicit "hide".
+  data.visibility['p|p:6'] = false;
+  assert.ok(names(buildRoster(det, data)).includes('Fay'));
+  // Team default can be changed in settings.
+  const d2 = db({ settings: { pco: { teamIds: ['w', 'p'], hideDeclined: true, defaultVisibleTeamIds: ['p'] } } });
+  assert.deepEqual(names(buildRoster(det, d2)), ['Eve', 'Fay']);
+  // Admin still lists everyone, with the effective choice.
+  const admin = buildRoster(det, data, { forAdmin: true });
+  const bob = admin.teams[0].members.find((m) => m.name === 'Bob');
+  assert.equal(bob.shown, false);
 });
 
 test('defaults fill in, explicit per-plan choice (including none) wins', () => {

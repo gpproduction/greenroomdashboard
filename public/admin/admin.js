@@ -164,11 +164,19 @@
     );
     loadPlan();
 
-    async function loadPlan(fresh = false) {
-      planBody.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
+    // `quiet` = refresh after a save: keep the current page on screen (no "Loading…")
+    // and put the scroll position back, so the page doesn't jump to the top.
+    async function loadPlan(fresh = false, { quiet = false } = {}) {
+      const scrollY = window.scrollY;
+      if (!quiet) planBody.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
       try {
         const data = await api(`/api/admin/plans/${selectedPlan.serviceTypeId}/${selectedPlan.id}${fresh ? '?fresh=1' : ''}`);
-        renderPlan(planBody, data, plans.find((p) => p.id === selectedPlan.id), activeId, () => loadPlan());
+        planBody.style.minHeight = quiet ? `${planBody.offsetHeight}px` : '';
+        renderPlan(planBody, data, plans.find((p) => p.id === selectedPlan.id), activeId, () => loadPlan(false, { quiet: true }));
+        if (quiet) {
+          window.scrollTo(0, scrollY);
+          planBody.style.minHeight = '';
+        }
         if (fresh) toast('Refreshed from Planning Center');
       } catch (err) {
         planBody.replaceChildren(el('div', { class: 'section' }, el('p', { class: 'error' }, err.message)));
@@ -201,7 +209,7 @@
 
     // device -> who has it (for the "in use" hint)
     const usage = new Map();
-    for (const t of teams) for (const m of t.members) for (const f of ['mic', 'iem']) if (m[f]) usage.set(m[f].id, m.name);
+    for (const t of teams) for (const m of t.members) for (const f of ['mic', 'iem', 'other']) if (m[f]) usage.set(m[f].id, m.name);
 
     const header = el('div', { class: 'section' },
       el('div', { class: 'row' },
@@ -209,7 +217,7 @@
         plan.id === activeId ? el('span', { class: 'badge live' }, 'Showing on dashboard') : el('span', { class: 'badge' }, 'Not on dashboard'),
         el('a', { href: plan.url, target: '_blank', rel: 'noopener' }, 'Open in Planning Center ↗'),
       ),
-      el('p', { class: 'help' }, 'Assignments save instantly and appear on the dashboard within a second. Only people with a mic or IEM show on the dashboard. Picking a mic also picks its linked IEM; you can still change the IEM on its own. Each person\'s choice is remembered and pre-fills future plans (marked “auto”).'),
+      el('p', { class: 'help' }, 'Assignments save instantly and appear on the dashboard within a second. “Show” puts someone on the dashboard even without a device (Worship Team is on by default); anyone with a device always shows. Picking a mic also picks its linked IEM; you can still change the IEM on its own. Choices are remembered for future plans (marked “auto”).'),
       meta?.times?.length ? el('p', { class: 'help' }, meta.times.map((t) => `${t.name || (t.type === 'service' ? 'Service' : t.type)} ${new Date(t.startsAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: churchTz() })}`).join(' · ')) : null,
     );
 
@@ -227,7 +235,7 @@
               try {
                 const r = await api(`/api/admin/plans/${plan.id}/assignments/${encodeURIComponent(m.key)}`, { method: 'PUT', body: { field, deviceId: e.target.value || null } });
                 const other = field === 'mic' ? 'iem' : 'mic';
-                if (other in (r.changes || {})) {
+                if (field !== 'other' && other in (r.changes || {})) {
                   const d = devices.find((x) => x.id === r.changes[other]);
                   toast(`Saved ${m.name} · linked ${other.toUpperCase()} ${d ? `→ ${d.name}` : 'cleared'}`);
                 } else toast(`Saved ${m.name}`);
@@ -239,8 +247,23 @@
             sel,
             m[field]?.source === 'default' ? el('div', { class: 'source-default' }, 'auto (remembered)') : null);
         };
+        // "Show on dashboard": always on (and locked) while they have a device.
+        const showBox = el('input', {
+          type: 'checkbox',
+          checked: m.shown,
+          disabled: m.hasDevice,
+          title: m.hasDevice ? 'Shown because they have a device assigned' : 'Show this person on the dashboard even without a device',
+          onchange: async (e) => {
+            try {
+              await api('/api/admin/visibility', { method: 'PUT', body: { teamId: team.id, key: m.key, show: e.target.checked } });
+              toast(`${m.name} ${e.target.checked ? 'will show' : 'hidden'} on the dashboard`);
+              reload();
+            } catch (err) { toast(err.message, true); }
+          },
+        });
         return el('tr', {},
-          el('td', { class: 'person-cell' + (m.mic || m.iem ? '' : ' unassigned') },
+          el('td', { class: 'show-cell' }, showBox),
+          el('td', { class: 'person-cell' + (m.shown ? '' : ' unassigned') },
             avatar(m),
             el('div', {},
             el('div', { class: 'person-name' }, m.name, m.status === 'U' ? el('span', { class: 'status-U' }, '  unconfirmed') : null),
@@ -251,12 +274,13 @@
               onclick: async () => { await api(`/api/admin/plans/${plan.id}/extras/${encodeURIComponent(m.key)}`, { method: 'DELETE' }); reload(); },
             }, 'Remove') : null),
           cell('mic'),
-          cell('iem'));
+          cell('iem'),
+          cell('other'));
       });
       return el('div', { class: 'section team-block' + (team.inFilter ? '' : ' dim') },
         el('div', { class: 'team-head' }, el('h3', {}, team.name), team.inFilter ? null : el('span', { class: 'badge' }, 'hidden on dashboard')),
         el('div', { class: 'table-wrap' }, el('table', { class: 'assign-table' },
-          el('thead', {}, el('tr', {}, el('th', { style: 'width:40%' }, 'Person'), el('th', {}, 'Mic'), el('th', {}, 'IEM'))),
+          el('thead', {}, el('tr', {}, el('th', { title: 'Show on dashboard' }, 'Show'), el('th', { style: 'width:34%' }, 'Person'), el('th', {}, 'Mic'), el('th', {}, 'IEM'), el('th', {}, 'Other'))),
           el('tbody', {}, rows))));
     });
 
@@ -470,7 +494,7 @@
     };
 
     const linkSelect = (d) => {
-      const partners = devices.filter((x) => x.type !== d.type);
+      const partners = devices.filter((x) => x.type === (d.type === 'mic' ? 'iem' : 'mic'));
       return el('select', {
         onchange: async (e) => {
           try {
@@ -491,12 +515,12 @@
             class: 'primary',
             onclick: async () => {
               const n = list.length + 1;
-              await api('/api/admin/devices', { method: 'POST', body: { type, name: type === 'mic' ? `Mic ${n}` : `IEM ${n}`, channel: String(n) } });
+              await api('/api/admin/devices', { method: 'POST', body: { type, name: type === 'mic' ? `Mic ${n}` : type === 'iem' ? `IEM ${n}` : 'New item', channel: type === 'other' ? '' : String(n) } });
               renderDevices();
             },
-          }, `+ Add ${type === 'mic' ? 'mic' : 'IEM'}`)),
+          }, `+ Add ${type === 'mic' ? 'mic' : type === 'iem' ? 'IEM' : 'item'}`)),
         list.length ? el('div', { class: 'table-wrap' }, el('table', { class: 'devices-table' },
-          el('thead', {}, el('tr', {}, ['', 'Name', 'Channel', 'Frequency', 'Type / model', type === 'mic' ? 'Linked IEM' : 'Linked mic', 'Notes', 'Active', ''].map((h) => el('th', {}, h)))),
+          el('thead', {}, el('tr', {}, ['', 'Name', 'Channel', 'Frequency', 'Type / model', type === 'mic' ? 'Linked IEM' : type === 'iem' ? 'Linked mic' : '', 'Notes', 'Active', ''].map((h) => el('th', {}, h)))),
           el('tbody', {}, list.map((d) => el('tr', {},
             el('td', { style: 'white-space:nowrap' },
               el('button', { class: 'small ghost', title: 'Move up', onclick: () => move(d, -1) }, '↑'),
@@ -504,8 +528,8 @@
             el('td', {}, el('input', { value: d.name, oninput: (e) => save(d, { name: e.target.value }) })),
             el('td', { style: 'width:6rem' }, el('input', { value: d.channel, oninput: (e) => save(d, { channel: e.target.value }) })),
             el('td', {}, el('input', { value: d.frequency, placeholder: 'e.g. 518.250 MHz', oninput: (e) => save(d, { frequency: e.target.value }) })),
-            el('td', {}, el('input', { value: d.kind, placeholder: type === 'mic' ? 'Handheld / Headset' : 'Pack / Wired', oninput: (e) => save(d, { kind: e.target.value }) })),
-            el('td', {}, linkSelect(d)),
+            el('td', {}, el('input', { value: d.kind, placeholder: type === 'mic' ? 'Handheld / Headset' : type === 'iem' ? 'Pack / Wired' : 'DI / Pack / Mic', oninput: (e) => save(d, { kind: e.target.value }) })),
+            el('td', {}, type === 'other' ? '' : linkSelect(d)),
             el('td', {}, el('input', { value: d.notes, oninput: (e) => save(d, { notes: e.target.value }) })),
             el('td', {}, el('input', { type: 'checkbox', checked: d.active, onchange: (e) => save(d, { active: e.target.checked }) })),
             el('td', {}, el('button', {
@@ -534,6 +558,7 @@
       el('p', { class: 'help' }, 'Your wireless inventory. Untick “Active” for gear that is out for repair.'),
       table('mic', 'Microphones'),
       table('iem', 'In-ear monitors'),
+      table('other', 'Other (acoustic packs, instrument mics, DIs…)'),
     );
   }
 
@@ -586,14 +611,27 @@
         const teams = await api(`/api/admin/pco/teams?serviceTypeIds=${s.pco.serviceTypeIds.join(',')}`);
         const byId = new Map(teams.map((t) => [t.id, t]));
         s.pco.teamIds = s.pco.teamIds.filter((id) => byId.has(id));
+        // Which teams show all their members by default (null = any team named like "Worship").
+        const defaultShown = () => (Array.isArray(s.pco.defaultVisibleTeamIds)
+          ? s.pco.defaultVisibleTeamIds
+          : teams.filter((t) => /worship/i.test(t.name)).map((t) => t.id));
         const draw = () => {
           const chosen = s.pco.teamIds.map((id) => byId.get(id));
           const rest = teams.filter((t) => !s.pco.teamIds.includes(t.id));
           teamBox.replaceChildren(
-            el('div', { class: 'help' }, 'Ticked teams appear on the dashboard in this order. Leave all unticked to show every team.'),
+            el('div', { class: 'help' }, 'Ticked teams appear on the dashboard in this order. Leave all unticked to show every team. “Show everyone” puts all of that team’s scheduled people on the dashboard even without a device (you can still turn people off one by one on the Assign page). People with a device always show.'),
             ...chosen.map((t, i) => el('div', { class: 'check' },
               el('input', { type: 'checkbox', checked: true, onchange: () => { s.pco.teamIds = s.pco.teamIds.filter((x) => x !== t.id); draw(); } }),
               el('span', { style: 'flex:1' }, t.name),
+              el('label', { class: 'check small-check' },
+                el('input', {
+                  type: 'checkbox',
+                  checked: defaultShown().includes(t.id),
+                  onchange: (e) => {
+                    const cur = defaultShown().filter((x) => x !== t.id);
+                    s.pco.defaultVisibleTeamIds = e.target.checked ? [...cur, t.id] : cur;
+                  },
+                }), 'Show everyone'),
               el('button', { class: 'small ghost', disabled: i === 0, onclick: () => { const a = s.pco.teamIds; [a[i - 1], a[i]] = [a[i], a[i - 1]]; draw(); } }, '↑'),
               el('button', { class: 'small ghost', disabled: i === chosen.length - 1, onclick: () => { const a = s.pco.teamIds; [a[i + 1], a[i]] = [a[i], a[i + 1]]; draw(); } }, '↓'))),
             ...rest.map((t) => el('label', { class: 'check' },

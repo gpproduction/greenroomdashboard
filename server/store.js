@@ -22,6 +22,7 @@ function defaults() {
         pinnedServiceTypeId: null,
         pollSeconds: 60,
         hideDeclined: true,
+        defaultVisibleTeamIds: null, // teams whose members show by default; null = teams named like "Worship"
         useNativeLeaders: true, // Planning Center's native "Leader" column (item assignments)
         leaderNoteCategories: 'Lead', // fallback: item note categories holding a leader as text (comma-separated)
       },
@@ -52,9 +53,10 @@ function defaults() {
       unifi: { enabled: false, host: '', port: 12445, token: '', leadMinutes: 60 }, // UniFi Access developer API; arrivals count from leadMinutes before today's first rehearsal/service
       admin: { passwordHash: null },
     },
-    devices: [], // { id, type: 'mic'|'iem', name, channel, frequency, kind, notes, active, linkedId }
+    devices: [], // { id, type: 'mic'|'iem'|'other', name, channel, frequency, kind, notes, active, linkedId }
     assignments: {}, // planId -> personKey -> { mic?: deviceId|null, iem?: deviceId|null }
-    defaults: {}, // personKey -> { mic, iem }   (last-used, auto-fills future plans)
+    defaults: {}, // personKey -> { mic, iem, other }   (last-used, auto-fills future plans)
+    visibility: {}, // "teamId|personKey" -> true/false   ("show on dashboard" choice, remembered across plans)
     extras: {}, // planId -> [{ key, name, role }]   (guests not in Planning Center)
     lastPlan: null, // cached copy of the last good plan detail for offline resilience
     sessions: {}, // sha256(token) -> expiresAt (admin logins)

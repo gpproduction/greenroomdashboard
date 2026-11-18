@@ -102,7 +102,7 @@
     return el('span', {
       class: 'chip',
       title: [dev.kind, dev.frequency].filter(Boolean).join(' · '),
-    }, el('span', { class: 'k' }, label), dev.name);
+    }, label ? el('span', { class: 'k' }, label) : null, dev.name);
   }
 
   // Planning Center photo when the person has one, otherwise their initials.
@@ -127,7 +127,7 @@
       return;
     }
     if (!teams.length) {
-      root.append(el('div', { class: 'empty-state' }, 'No mics or IEMs assigned yet for this plan.'));
+      root.append(el('div', { class: 'empty-state' }, 'No one to show yet — assign devices or tick “Show” in admin.'));
       return;
     }
 
@@ -143,7 +143,8 @@
               // Badged in through UniFi Access today
               m.arrivedAt ? el('span', { class: 'arrived-tag' }, '✓ Arrived', el('span', { class: 'at' }, fmtTime(new Date(m.arrivedAt).toISOString()))) : null),
             el('div', { class: 'pos' }, m.positions.join(', '), m.status === 'U' ? el('span', { class: 'tag' }, 'unconfirmed') : null)),
-          el('div', { class: 'devices' }, chip('Mic', m.mic), chip('IEM', m.iem)),
+          // "Other" (acoustic pack, violin mic…) shows as a plain chip with just its name.
+          el('div', { class: 'devices' }, chip('Mic', m.mic), chip('IEM', m.iem), chip('', m.other)),
         )),
       ));
     }

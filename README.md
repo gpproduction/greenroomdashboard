@@ -3,6 +3,8 @@
 A self-hosted mic and in-ear-monitor assignment board for church production teams.
 
 - **Planning Center Services**: pulls the current or next plan, with its order of service (including each item's leader), service times, and scheduled team members with their Planning Center photos.
+- **Other devices**: a third slot for acoustic packs, instrument mics, DIs and so on, shown as a plain chip on the dashboard.
+- **Show on dashboard**: a per-person checkbox on the Assign page. Worship Team shows everyone by default (set per team in Settings), and anyone with a device always shows, so instrumentalists appear with their position even without a mic.
 - **Assignments**: you assign wireless mics and IEMs to each person in the admin backend. Each mic can be linked to an IEM, so picking the mic brings its IEM along, and you can still change the IEM on its own. Each person's last choice is remembered and pre-fills future plans. Only people with something assigned appear on the board.
 - **ProPresenter 7**: shows live timers and highlights the item that's currently on screen.
 - **Live item timing** (like Services LIVE): when an item goes live in ProPresenter, the dashboard counts how long you've been on it (planned vs actual, plus a running service total). Actual times are saved per service time, and only during Planning Center *service* times, never rehearsals. Admin → Assign shows a planned-vs-actual report. Try it with `DEMO=1 DEMO_LIVE=1 npm start`.

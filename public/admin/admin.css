@@ -150,6 +150,8 @@ td.conflict select { border-color: var(--bad); }
 .facts dt { color: var(--muted); }
 .facts dd { margin: 0; }
 
+.small-check { font-size: 0.85rem; color: var(--muted); margin-right: 0.6rem; }
+.show-cell { width: 2.5rem; text-align: center; }
 .arrived-note { color: var(--ok); font-size: 0.8rem; font-weight: 600; }
 
 .version { font-size: 0.75rem; font-weight: 500; color: var(--muted); margin-left: 0.3rem; }

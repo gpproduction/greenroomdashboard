@@ -86,6 +86,7 @@ const PEOPLE = [
   ['p6', 'Riley Chen', 't1', 'Worship Team', 'Bass Guitar', 'C'],
   ['p7', 'Morgan Diaz', 't1', 'Worship Team', 'Keys', 'C'],
   ['p8', 'Jamie Fox', 't1', 'Worship Team', 'Drums', 'C'],
+  ['p14', 'Chris Young', 't1', 'Worship Team', 'Aux/Organ', 'C'], // no device: shows because Worship Team shows everyone
   ['p9', 'Pat Kim', 't2', 'Production Team', 'Speaking Pastor', 'C'],
   ['p10', 'Drew Hall', 't2', 'Production Team', 'Announcements', 'C'],
   ['p11', 'Quinn Ward', 't2', 'Production Team', 'Sound', 'C'],
@@ -129,6 +130,8 @@ export function seedDevices() {
   }
   devices.push({ id: 'm9', type: 'mic', name: 'Headset A', channel: '9', frequency: '531.250 MHz', kind: 'Headset', notes: '', active: true, linkedId: null });
   devices.push({ id: 'm10', type: 'mic', name: 'Lav B', channel: '10', frequency: '533.000 MHz', kind: 'Lavalier', notes: '', active: true, linkedId: null });
+  devices.push({ id: 'o1', type: 'other', name: 'Acoustic Pack', channel: '', frequency: '', kind: 'Wireless pack', notes: '', active: true, linkedId: null });
+  devices.push({ id: 'o2', type: 'other', name: 'Violin Mic', channel: '', frequency: '', kind: 'Clip-on', notes: '', active: true, linkedId: null });
   for (let i = 1; i <= 8; i++) {
     devices.push({ id: `e${i}`, type: 'iem', name: `IEM ${i}`, channel: `Mix ${i}`, frequency: `${(570 + i * 0.8).toFixed(3)} MHz`, kind: 'Wireless pack', notes: '', active: true, linkedId: `m${i}` });
   }
@@ -138,7 +141,7 @@ export function seedDevices() {
 export function seedAssignments() {
   return {
     p1: { mic: 'm1', iem: 'e1' }, p2: { mic: 'm2', iem: 'e2' }, p3: { mic: 'm3', iem: 'e3' },
-    p4: { mic: 'm4', iem: 'e4' }, p5: { iem: 'e5' }, p6: { iem: 'e6' }, p7: { mic: 'm5', iem: 'e7' },
+    p4: { mic: 'm4', iem: 'e4', other: 'o1' }, p5: { iem: 'e5' }, p6: { iem: 'e6' }, p7: { mic: 'm5', iem: 'e7' },
     p8: { iem: 'e8' }, p9: { mic: 'm9' }, p10: { mic: 'm10' },
   };
 }
