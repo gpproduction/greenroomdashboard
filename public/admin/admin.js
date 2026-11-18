@@ -819,6 +819,7 @@
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=timers`), ' — big timers only (stage/greenroom clock)'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=roster`), ' — mic/IEM list only'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=order`), ' — order of service only'),
+        el('li', {}, el('code', {}, `${origin}/sound/`), ' — sound desk: level meter, Spotify and order of service'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?teams=Worship Team`), ' — only certain teams (comma-separated)'),
         el('li', {}, 'Add ', el('code', {}, '&scale=1.3'), ' to make text larger on a distant TV.')),
     );
@@ -932,6 +933,76 @@
         field('Keep recording after each service ends (minutes)', el('input', { type: 'number', min: 0, max: 120, value: s.live.postRollMinutes, oninput: (e) => { s.live.postRollMinutes = Number(e.target.value); } }), 'In case the service runs long.')),
       el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('live') }, 'Save timing settings')));
 
+    // Open Sound Meter ----------------------------------------------------------------------
+    const osmStatus = el('div', { class: 'help' });
+    const sel = (obj, key, options) => el('select', { onchange: (e) => { obj[key] = e.target.value; } },
+      options.map(([v, t]) => el('option', { value: v, selected: String(obj[key]) === v }, t)));
+    const num = (obj, key, attrs = {}) => el('input', { type: 'number', value: obj[key], ...attrs, oninput: (e) => { obj[key] = Number(e.target.value); } });
+    const osmSection = el('div', { class: 'section' },
+      el('h2', {}, 'Open Sound Meter (sound desk level)'),
+      el('p', { class: 'help' }, 'Shows the live SPL from Open Sound Meter on the sound desk page (/sound/). In Open Sound Meter, open the Remote panel (sidebar) and tick “Server”. The OSM computer must be on the same network as the NAS; no IP address is needed — Green Room listens for it.'),
+      check('Listen for Open Sound Meter', s.osm, 'enabled'),
+      el('div', { class: 'grid2' },
+        field('Measurement to show', el('input', { value: s.osm.source, placeholder: 'Blank = the first one found', oninput: (e) => { s.osm.source = e.target.value; } }), 'The measurement’s name in Open Sound Meter, e.g. “Measurement 1”.'),
+        field('Weighting', sel(s.osm, 'curve', [['A', 'A (dBA)'], ['C', 'C (dBC)'], ['Z', 'Z (flat)'], ['B', 'B']])),
+        field('Meter speed', sel(s.osm, 'time', [['Slow', 'Slow'], ['Fast', 'Fast']])),
+        field('Leq window (minutes)', num(s.osm, 'leqMinutes', { min: 1, max: 60 })),
+        field('Amber at (dB)', num(s.osm, 'warn', { min: 40, max: 130 })),
+        field('Red at (dB)', num(s.osm, 'alarm', { min: 40, max: 130 })),
+        field('Calibration offset (dB)', num(s.osm, 'offset', { step: 0.1 }), 'Normally 0 — Green Room already matches OSM’s SPL readout.')),
+      el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('osm') }, 'Save Open Sound Meter settings')),
+      osmStatus);
+    fetch('/api/dashboard').then((r) => r.json()).then((d) => {
+      const o = d.osm || {};
+      osmStatus.textContent = !o.enabled ? '' : o.connected ? `✓ Receiving “${o.source}”${o.host ? ` from ${o.host}` : ''} — ${o.spl?.toFixed(1)} dB` : o.error || (o.sources?.length ? `Found: ${o.sources.map((x) => x.name).join(', ')} — waiting for levels…` : 'Waiting for Open Sound Meter… (Remote → Server ticked? same network?)');
+      osmStatus.className = o.connected ? 'help ok-text' : o.error ? 'help error' : 'help';
+    }).catch(() => {});
+
+    // Spotify ------------------------------------------------------------------------------------
+    const spBox = el('div');
+    const drawSpotify = () => {
+      const sp = settings.spotify || {};
+      if (sp.connected) {
+        spBox.replaceChildren(
+          el('p', { class: 'ok-text' }, '✓ Spotify is connected.'),
+          el('button', { class: 'danger', onclick: async () => { await api('/api/admin/spotify/disconnect', { method: 'POST' }); settings = await api('/api/admin/settings'); drawSpotify(); } }, 'Disconnect Spotify'));
+        return;
+      }
+      const clientId = el('input', { value: sp.clientId || '', placeholder: 'Client ID (32 characters)' });
+      const pasted = el('input', { placeholder: 'Paste the whole address here (starts with http://127.0.0.1:8888/callback?code=…)' });
+      const out = el('div', { class: 'help' });
+      spBox.replaceChildren(
+        el('ol', { class: 'help steps' },
+          el('li', {}, 'Go to ', el('a', { href: 'https://developer.spotify.com/dashboard', target: '_blank', rel: 'noopener' }, 'developer.spotify.com/dashboard'), ', sign in with the church Spotify account, and click Create app (any name, e.g. “Green Room”). Tick “Web API”.'),
+          el('li', {}, 'Under Redirect URIs add exactly: ', el('code', {}, sp.redirectUri || 'http://127.0.0.1:8888/callback'), ' and save.'),
+          el('li', {}, 'Copy the app’s Client ID into the box below and click Connect Spotify. Sign in and click Agree.'),
+          el('li', {}, 'Your browser then lands on a page that won’t load — that’s expected. Copy the whole address from the address bar, paste it below and click Finish.')),
+        el('div', { class: 'row' }, clientId, el('button', {
+          class: 'primary',
+          onclick: async () => {
+            try {
+              const r = await api('/api/admin/spotify/begin', { method: 'POST', body: { clientId: clientId.value } });
+              window.open(r.url, '_blank', 'noopener');
+              out.className = 'help'; out.textContent = 'A Spotify sign-in tab opened. After agreeing, copy the address of the page it lands on.';
+            } catch (err) { out.className = 'help error'; out.textContent = err.message; }
+          },
+        }, 'Connect Spotify')),
+        el('div', { class: 'row', style: 'margin-top:0.5rem' }, pasted, el('button', {
+          onclick: async () => {
+            try {
+              await api('/api/admin/spotify/finish', { method: 'POST', body: { url: pasted.value } });
+              settings = await api('/api/admin/settings'); drawSpotify(); toast('Spotify connected');
+            } catch (err) { out.className = 'help error'; out.textContent = err.message; }
+          },
+        }, 'Finish')),
+        out);
+    };
+    drawSpotify();
+    const spSection = el('div', { class: 'section' },
+      el('h2', {}, 'Spotify (sound desk)'),
+      el('p', { class: 'help' }, 'Shows what’s playing and lets the sound desk play/pause, skip, set volume and start a playlist from /sound/. Controls need Spotify Premium and an admin sign-in on that computer.'),
+      spBox);
+
     // Updates ------------------------------------------------------------------------------
     const updResult = el('div', { class: 'help' });
     const updSection = el('div', { class: 'section' }, el('h2', {}, 'Updates'), el('p', { class: 'muted' }, 'Checking…'));
@@ -966,7 +1037,7 @@
           : el('p', { class: 'help' }, 'Automatic updates aren’t set up on this server yet. See docs/AUTO-UPDATE.md.'));
     }).catch(() => {});
 
-    root.replaceChildren(pcoSection, ppSection, hdSection, obsSection, unifiSection, liveSection, displaySection, updSection, pwSection);
+    root.replaceChildren(pcoSection, ppSection, hdSection, obsSection, unifiSection, osmSection, spSection, liveSection, displaySection, updSection, pwSection);
     if (s.pco.hasSecret || s.pco.envCredentials || s.demo) loadServiceTypes();
     loadPlanChoices();
     loadLeaderColumns();

@@ -151,6 +151,8 @@ td.conflict select { border-color: var(--bad); }
 .facts dd { margin: 0; }
 
 .small-check { font-size: 0.85rem; color: var(--muted); margin-right: 0.6rem; }
+.steps { padding-left: 1.2rem; margin: 0 0 0.6rem; }
+.steps li { margin-bottom: 0.25rem; }
 .show-cell { width: 2.5rem; text-align: center; }
 .arrived-note { color: var(--ok); font-size: 0.8rem; font-weight: 600; }
 

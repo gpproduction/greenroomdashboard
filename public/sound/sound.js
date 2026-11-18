@@ -1,0 +1,166 @@
+/* Sound desk: Open Sound Meter levels, Spotify now-playing + controls, order of service. */
+(() => {
+  const $ = (id) => document.getElementById(id);
+  let osm = null;
+  let sp = null;
+  let signedIn = false;
+  let bootId = null;
+  let tz;
+
+  // ---- helpers ---------------------------------------------------------------------
+  const fmt1 = (v) => (v == null ? '--' : v.toFixed(1));
+  const mmss = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+  const level = (v, o) => (v == null ? '' : v >= o.alarm ? 'alarm' : v >= o.warn ? 'warn' : '');
+  async function post(url, body) {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) { signedIn = false; renderSpotify(); throw new Error('Sign in to control Spotify'); }
+    if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
+    return data;
+  }
+  async function get(url) {
+    const res = await fetch(url);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
+    return data;
+  }
+
+  // ---- clock -------------------------------------------------------------------------
+  setInterval(() => {
+    let t;
+    try { t = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: tz }); } catch { t = new Date().toLocaleTimeString(); }
+    $('clock').textContent = t;
+    tickProgress();
+  }, 1000);
+
+  // ---- level meter --------------------------------------------------------------------
+  const LOW = 60, HIGH = 110;
+  const pct = (v) => Math.max(0, Math.min(100, ((v - LOW) / (HIGH - LOW)) * 100));
+  function renderMeter() {
+    const card = $('meter');
+    const o = osm || {};
+    $('spl-unit').textContent = `dB(${o.curve || 'A'})`;
+    $('spl-time').textContent = o.time || 'Slow';
+    $('leq-label').textContent = `Leq ${o.leqMinutes || 15} min`;
+    $('mark-warn').style.left = `${pct(o.warn || 95)}%`;
+    $('mark-alarm').style.left = `${pct(o.alarm || 100)}%`;
+    const live = o.connected && o.spl != null;
+    card.className = `card meter ${live ? level(o.spl, o) : 'off'}`;
+    $('spl').textContent = live ? fmt1(o.spl) : '--.-';
+    $('bar-fill').style.width = live ? `${pct(o.fast ?? o.spl)}%` : '0';
+    for (const [id, v] of [['leq', o.leq], ['leq1', o.leq1], ['max1', o.max1]]) {
+      $(id).textContent = fmt1(v);
+      $(id).className = `v ${level(v, o)}`;
+    }
+    $('meter-src').textContent = live ? `${o.source}${o.host ? ` · ${o.host}` : ''}` : 'Open Sound Meter';
+    const msg = $('meter-msg');
+    msg.className = 'msg';
+    if (!o.enabled) msg.innerHTML = 'Not connected. Turn it on in <a href="/admin/#settings" target="_blank">Admin → Settings → Open Sound Meter</a>.';
+    else if (o.error) { msg.className = 'msg error'; msg.textContent = o.error; }
+    else if (!o.connected) msg.textContent = 'Waiting for Open Sound Meter… (in OSM, open Remote and tick “Server”).';
+    else msg.textContent = '';
+  }
+
+  // ---- Spotify ----------------------------------------------------------------------------
+  function renderSpotify() {
+    const card = $('spotify');
+    const p = sp?.player;
+    card.classList.toggle('locked', !signedIn || !sp?.connected);
+    $('sp-title').textContent = p?.title || (sp?.connected ? 'Nothing playing' : '—');
+    $('sp-artist').textContent = p?.artist || '';
+    $('sp-art').style.backgroundImage = p?.art ? `url("${encodeURI(p.art)}")` : '';
+    $('sp-art').textContent = p?.art ? '' : '♫';
+    $('sp-device').textContent = p?.device ? `on ${p.device.name}` : '';
+    $('sp-playpause').textContent = p?.isPlaying ? '⏸' : '▶';
+    if (p?.device && document.activeElement !== $('sp-volume')) $('sp-volume').value = p.device.volume ?? 50;
+    tickProgress();
+    const msg = $('sp-msg');
+    msg.className = 'msg';
+    if (!sp?.configured) msg.innerHTML = 'Not connected. Connect it in <a href="/admin/#settings" target="_blank">Admin → Settings → Spotify</a>.';
+    else if (sp.error) { msg.className = 'msg error'; msg.textContent = sp.error; }
+    else if (!signedIn) msg.innerHTML = '<a href="/admin/" target="_blank">Sign in to admin</a> on this computer to control playback, then reload.';
+    else msg.textContent = '';
+  }
+
+  function tickProgress() {
+    const p = sp?.player;
+    if (!p || !p.durationMs) { $('sp-progress').style.width = '0'; $('sp-pos').textContent = '0:00'; $('sp-dur').textContent = '0:00'; return; }
+    const pos = Math.min(p.durationMs, p.progressMs + (p.isPlaying ? Date.now() - p.at : 0));
+    $('sp-progress').style.width = `${(pos / p.durationMs) * 100}%`;
+    $('sp-pos').textContent = mmss(pos);
+    $('sp-dur').textContent = mmss(p.durationMs);
+  }
+
+  async function act(action, body) {
+    try {
+      $('sp-msg').className = 'msg';
+      await post(`/api/sound/spotify/${action}`, body);
+    } catch (err) {
+      $('sp-msg').className = 'msg error';
+      $('sp-msg').textContent = err.message;
+    }
+  }
+  for (const b of document.querySelectorAll('[data-act]')) b.addEventListener('click', () => act(b.dataset.act));
+  $('sp-playpause').addEventListener('click', () => act(sp?.player?.isPlaying ? 'pause' : 'play'));
+  let volTimer;
+  $('sp-volume').addEventListener('input', (e) => {
+    clearTimeout(volTimer);
+    volTimer = setTimeout(() => act('volume', { volume: Number(e.target.value) }), 250);
+  });
+  $('sp-play-playlist').addEventListener('click', () => {
+    const uri = $('sp-playlists').value;
+    if (uri) act('play', { contextUri: uri, deviceId: $('sp-devices').value || undefined });
+  });
+  $('sp-devices').addEventListener('change', (e) => { if (e.target.value) act('transfer', { deviceId: e.target.value, play: Boolean(sp?.player?.isPlaying) }); });
+
+  async function loadPickers() {
+    if (!signedIn || !sp?.connected) return;
+    try {
+      const lists = await get('/api/sound/spotify-playlists');
+      $('sp-playlists').replaceChildren(new Option('Choose a playlist…', ''), ...lists.map((l) => new Option(`${l.name}${l.tracks != null ? ` (${l.tracks})` : ''}`, l.uri)));
+      const devs = await get('/api/sound/spotify-devices');
+      $('sp-devices').replaceChildren(new Option(devs.length ? 'Play on…' : 'No devices — open Spotify', ''), ...devs.map((d) => {
+        const o = new Option(`${d.name}${d.isActive ? ' ✓' : ''}`, d.id);
+        return o;
+      }));
+    } catch (err) {
+      $('sp-msg').className = 'msg error';
+      $('sp-msg').textContent = err.message;
+    }
+  }
+  $('sp-devices').addEventListener('focus', loadPickers);
+
+  // ---- live connection ---------------------------------------------------------------------
+  let retry = 1000;
+  let pickersLoaded = false;
+  function connect() {
+    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+    ws.onopen = () => { retry = 1000; };
+    ws.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'state') {
+        if (bootId && msg.payload.bootId !== bootId) location.reload(); // server updated
+        bootId = msg.payload.bootId;
+        tz = msg.payload.display?.timezone;
+        const p = msg.payload.plan;
+        $('plan-meta').textContent = p ? [p.serviceTypeName, p.dates].filter(Boolean).join(' · ') : '';
+      }
+      if (msg.type === 'osm') { osm = msg.payload; renderMeter(); }
+      if (msg.type === 'spotify') {
+        sp = msg.payload;
+        renderSpotify();
+        if (!pickersLoaded && sp.connected && signedIn) { pickersLoaded = true; loadPickers(); }
+      }
+    };
+    ws.onclose = () => { setTimeout(connect, retry); retry = Math.min(retry * 2, 15000); };
+    ws.onerror = () => ws.close();
+  }
+
+  fetch('/api/auth/status').then((r) => r.json()).then((s) => { signedIn = Boolean(s.signedIn); renderSpotify(); }).catch(() => {});
+  renderMeter();
+  renderSpotify();
+  connect();
+})();

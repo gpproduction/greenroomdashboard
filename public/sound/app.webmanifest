@@ -1,0 +1,15 @@
+{
+  "id": "/sound/",
+  "name": "Green Room Sound Desk",
+  "short_name": "Sound Desk",
+  "description": "Live level from Open Sound Meter, Spotify control and the order of service.",
+  "start_url": "/sound/",
+  "scope": "/sound/",
+  "display": "standalone",
+  "background_color": "#0b0d12",
+  "theme_color": "#1D4850",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

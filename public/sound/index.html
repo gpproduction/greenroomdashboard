@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sound Desk</title>
+  <link rel="stylesheet" href="/sound/sound.css">
+  <link rel="manifest" href="/sound/app.webmanifest">
+  <link rel="icon" type="image/png" href="/icons/favicon.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#1D4850">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img class="logo" alt="" src="/branding/logo">
+      <div class="heading"><div class="title">Sound Desk</div><div class="sub" id="plan-meta"></div></div>
+    </div>
+    <div class="clock" id="clock"></div>
+  </header>
+
+  <main>
+    <div class="left">
+      <!-- Open Sound Meter -->
+      <section class="card meter" id="meter">
+        <div class="card-head"><h2>Level</h2><span class="src" id="meter-src">Open Sound Meter</span></div>
+        <div class="spl-row">
+          <div class="spl" id="spl">--.-</div>
+          <div class="unit"><span id="spl-unit">dB(A)</span><span id="spl-time">Slow</span></div>
+        </div>
+        <div class="bar"><div class="fill" id="bar-fill"></div><i class="mark warn" id="mark-warn"></i><i class="mark alarm" id="mark-alarm"></i></div>
+        <div class="scale"><span>60</span><span>70</span><span>80</span><span>90</span><span>100</span><span>110</span></div>
+        <div class="stats">
+          <div><span class="k" id="leq-label">Leq 15 min</span><span class="v" id="leq">--</span></div>
+          <div><span class="k">Leq 1 min</span><span class="v" id="leq1">--</span></div>
+          <div><span class="k">Max 1 min</span><span class="v" id="max1">--</span></div>
+        </div>
+        <div class="msg" id="meter-msg"></div>
+      </section>
+
+      <!-- Spotify -->
+      <section class="card spotify" id="spotify">
+        <div class="card-head"><h2>Spotify</h2><span class="src" id="sp-device"></span></div>
+        <div class="np">
+          <div class="art" id="sp-art"></div>
+          <div class="np-text">
+            <div class="np-title" id="sp-title">—</div>
+            <div class="np-artist" id="sp-artist"></div>
+            <div class="progress"><div class="p-fill" id="sp-progress"></div></div>
+            <div class="times"><span id="sp-pos">0:00</span><span id="sp-dur">0:00</span></div>
+          </div>
+        </div>
+        <div class="controls" id="sp-controls">
+          <button class="ctl" data-act="previous" title="Previous">⏮</button>
+          <button class="ctl big" id="sp-playpause" title="Play / pause">▶</button>
+          <button class="ctl" data-act="next" title="Next">⏭</button>
+          <label class="vol">🔈<input type="range" min="0" max="100" id="sp-volume"></label>
+        </div>
+        <div class="pick" id="sp-pick">
+          <select id="sp-playlists"><option value="">Choose a playlist…</option></select>
+          <button id="sp-play-playlist">Play</button>
+          <select id="sp-devices" title="Play on"></select>
+        </div>
+        <div class="msg" id="sp-msg"></div>
+      </section>
+    </div>
+
+    <!-- Order of service: the dashboard's own view, embedded -->
+    <section class="card order">
+      <iframe id="order" title="Order of service" src="/dashboard/?layout=order&embed=1"></iframe>
+    </section>
+  </main>
+
+  <script src="/sound/sound.js"></script>
+</body>
+</html>

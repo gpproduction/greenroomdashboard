@@ -51,6 +51,15 @@ Open `http://192.168.1.100:8080/admin`:
 - The header shows the version and build, e.g. **v0.8.0 · 1a2b3c4**.
 - **Settings → Updates** says automatic updates are on.
 
+## Changing the NAS setup file later
+
+The updater installs new **app** versions, but it doesn't change the project's YAML. When a release changes the YAML, do this once:
+1. **Container Manager → Project → greenroom → Action → Stop**.
+2. Click **Edit** (or *YAML configurations*), paste the new [`deploy/synology/docker-compose.yml`](../deploy/synology/docker-compose.yml), and save.
+3. Click **Action → Build**, then **Start**.
+
+For example, v0.9.0 switches Green Room to `network_mode: host` so it can hear Open Sound Meter.
+
 ## Troubleshooting
 
 - **"denied" or "unauthorized" when the project starts.** The package is still private. Do step 2, option A or B.

@@ -9,6 +9,7 @@ A self-hosted mic and in-ear-monitor assignment board for church production team
 - **ProPresenter 7**: shows live timers and highlights the item that's currently on screen.
 - **Live item timing** (like Services LIVE): when an item goes live in ProPresenter, the dashboard counts how long you've been on it (planned vs actual, plus a running service total). Actual times are saved per service time, and only during Planning Center *service* times, never rehearsals. Admin → Assign shows a planned-vs-actual report. Try it with `DEMO=1 DEMO_LIVE=1 npm start`.
 - **HyperDeck & OBS**: the dashboard footer shows HyperDeck record status and timecode (Ethernet control, port 9993) and OBS stream and record time (OBS WebSocket server, port 4455), next to the connection icons.
+- **Sound desk page** (`/sound/`): live SPL and Leq from Open Sound Meter, Spotify now-playing and controls, and the order of service. See [docs/SOUND-DESK.md](docs/SOUND-DESK.md).
 - **UniFi Access arrivals**: people who badged in today get a green "Arrived" (with the time) on the dashboard. Door unlocks come from the UniFi Access API (port 12445) and are matched to Planning Center names.
 - **Production test mode** (Admin → Live): click through ProPresenter outside service times to check item timing. It's recorded separately from real services.
 - **Announcements**: the description from Planning Center is shown under announcement items (configurable).
@@ -142,6 +143,8 @@ server/
   live.js          live item timing (ProPresenter → plan item, service-time windows)
   media.js         HyperDeck (TCP 9993) + OBS (obs-websocket v5) status
   unifi.js         UniFi Access door arrivals matched to Planning Center names
+  osm.js           Open Sound Meter levels (UDP multicast 49007) + Leq
+  spotify.js       Spotify now playing + controls (PKCE)
   store.js         JSON file persistence
   env.js           loads .env before anything else
   auth.js          admin password + sessions

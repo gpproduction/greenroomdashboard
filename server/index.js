@@ -16,6 +16,8 @@ import * as demo from './demo.js';
 import * as live from './live.js';
 import * as media from './media.js';
 import * as unifi from './unifi.js';
+import * as osm from './osm.js';
+import * as spotify from './spotify.js';
 import { buildRoster, assignmentChanges, FIELDS, visibilityKey } from './roster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -128,7 +130,18 @@ auth.routes(app);
 const VERSION = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).version;
 const COMMIT = (process.env.APP_COMMIT || '').slice(0, 7) || null;
 app.get('/api/health', (req, res) => res.json({ ok: true, version: VERSION, commit: COMMIT, bootId: BOOT_ID }));
-app.get('/api/dashboard', (req, res) => res.json({ ...dashboardState(), propresenter: pp.getState(), media: media.getState() }));
+app.get('/api/dashboard', (req, res) => res.json({ ...dashboardState(), propresenter: pp.getState(), media: media.getState(), osm: osm.getState(), spotify: spotify.getState() }));
+
+// Sound desk: Spotify controls need an admin sign-in (viewing doesn't).
+app.post('/api/sound/spotify/:action', auth.requireAdmin, async (req, res) => {
+  try { res.json(await spotify.control(req.params.action, req.body || {})); } catch (err) { res.status(400).json({ error: err.message }); }
+});
+app.get('/api/sound/spotify-devices', auth.requireAdmin, async (req, res) => {
+  try { res.json(await spotify.devices()); } catch (err) { res.status(400).json({ error: err.message }); }
+});
+app.get('/api/sound/spotify-playlists', auth.requireAdmin, async (req, res) => {
+  try { res.json(await spotify.playlists()); } catch (err) { res.status(400).json({ error: err.message }); }
+});
 
 const admin = express.Router();
 admin.use(auth.requireAdmin);
@@ -140,6 +153,7 @@ admin.get('/settings', (req, res) => {
     pco: { ...settings.pco, secret: settings.pco.secret ? '••••••••' : '', hasSecret: Boolean(settings.pco.secret), envCredentials: Boolean(process.env.PCO_APP_ID) },
     obs: { ...settings.obs, password: settings.obs.password ? '••••••••' : '', hasPassword: Boolean(settings.obs.password) },
     unifi: { ...settings.unifi, token: settings.unifi.token ? '••••••••' : '', hasToken: Boolean(settings.unifi.token) },
+    spotify: { clientId: settings.spotify.clientId, connected: Boolean(settings.spotify.refreshToken), redirectUri: spotify.REDIRECT_URI },
     admin: undefined,
     demo: pco.isDemo(),
   });
@@ -158,6 +172,7 @@ admin.put('/settings', (req, res) => {
     if (body.display) Object.assign(s.display, body.display);
     if (body.live) Object.assign(s.live, body.live);
     if (body.hyperdeck) Object.assign(s.hyperdeck, body.hyperdeck);
+    if (body.osm) Object.assign(s.osm, body.osm);
     if (body.unifi) {
       const { token, hasToken, ...rest } = body.unifi;
       Object.assign(s.unifi, rest);
@@ -174,6 +189,7 @@ admin.put('/settings', (req, res) => {
   if (body.hyperdeck) media.restart(['hyperdeck']);
   if (body.obs) media.restart(['obs']);
   if (body.unifi) unifi.restart();
+  if (body.osm) osm.restart();
   res.json({ ok: true });
 });
 
@@ -298,6 +314,17 @@ admin.put('/visibility', (req, res) => {
   store.update((db) => { (db.visibility ??= {})[visibilityKey(teamId, key)] = show; });
   res.json({ ok: true });
 });
+
+// Spotify one-time connection (PKCE, paste-back of the 127.0.0.1 redirect URL).
+admin.post('/spotify/begin', (req, res) => {
+  const clientId = String(req.body?.clientId || '').trim();
+  if (!/^[0-9a-f]{32}$/i.test(clientId)) return res.status(400).json({ error: 'Paste the Client ID from your Spotify developer app (32 letters and numbers).' });
+  res.json({ url: spotify.beginAuth(clientId), redirectUri: spotify.REDIRECT_URI });
+});
+admin.post('/spotify/finish', async (req, res) => {
+  try { res.json(await spotify.finishAuth(req.body?.url)); } catch (err) { res.status(400).json({ error: err.message }); }
+});
+admin.post('/spotify/disconnect', (req, res) => { spotify.disconnect(); res.json({ ok: true }); });
 
 // Auto-update (Watchtower sidecar on the NAS): status + "install updates now".
 admin.get('/update', (req, res) => {
@@ -467,6 +494,8 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'state', payload: dashboardState() }));
   ws.send(JSON.stringify({ type: 'propresenter', payload: pp.getState() }));
   ws.send(JSON.stringify({ type: 'media', payload: media.getState() }));
+  ws.send(JSON.stringify({ type: 'osm', payload: osm.getState() }));
+  ws.send(JSON.stringify({ type: 'spotify', payload: spotify.getState() }));
 });
 
 // Heartbeat: drop dead sockets so clients notice and reconnect.
@@ -487,6 +516,8 @@ store.events.on('change', (topic) => { if (topic !== 'auth') scheduleStateBroadc
 sync.events.on('change', scheduleStateBroadcast);
 pp.events.on('change', (s) => broadcast('propresenter', s));
 media.events.on('change', (s) => broadcast('media', s));
+osm.events.on('change', (s) => broadcast('osm', s));
+spotify.events.on('change', (s) => broadcast('spotify', s));
 unifi.events.on('change', scheduleStateBroadcast);
 
 // --- start -------------------------------------------------------------------------
@@ -497,6 +528,8 @@ server.listen(PORT, HOST, () => {
   live.start();
   media.start();
   unifi.start();
+  osm.start();
+  spotify.start();
 });
 
 function shutdown() {

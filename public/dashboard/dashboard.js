@@ -4,6 +4,7 @@
  *   ?layout=full|roster|order|timers   which panels to show (default full)
  *   ?teams=Worship Team,Choir    only show these teams (names, case-insensitive)
  *   ?scale=1.2                   make everything bigger/smaller
+ *   ?embed=1                     hide the header and status bar (for embedding)
  *   ?side=0                      hide the right-hand panel
  */
 (() => {
@@ -12,6 +13,7 @@
   const teamFilter = (params.get('teams') || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
   document.body.classList.add(`layout-${layout}`);
   if (params.get('side') === '0') document.body.classList.add('no-side');
+  if (params.get('embed') === '1') document.body.classList.add('embed'); // inside another page (e.g. the sound desk): no header/footer
   if (params.get('scale')) document.documentElement.style.setProperty('--user-scale', params.get('scale'));
 
   const $ = (id) => document.getElementById(id);

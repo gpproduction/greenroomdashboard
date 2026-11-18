@@ -6,14 +6,15 @@ services:
     image: ghcr.io/gpproduction/greenroomdashboard:latest
     container_name: greenroom-dashboard
     restart: unless-stopped
-    ports:
-      - "8080:8080"
+    # Host networking so Green Room can hear Open Sound Meter's multicast levels
+    # (UDP 49007). The web app is on port 8080 of the NAS as before.
+    network_mode: host
     volumes:
       - ./data:/data # settings, devices, assignments — keep this folder
     environment:
       TZ: America/New_York
       # Lets the admin "Install updates now" button ask the updater to check right away.
-      UPDATER_URL: http://greenroom-updater:8080
+      UPDATER_URL: http://127.0.0.1:8081
       UPDATER_TOKEN: greenroom-update
     labels:
       com.centurylinklabs.watchtower.enable: "true" # only this container is auto-updated
@@ -22,6 +23,8 @@ services:
     image: containrrr/watchtower:latest
     container_name: greenroom-updater
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:8080" # updater API, reachable only from the NAS itself
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
