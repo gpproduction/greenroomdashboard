@@ -152,6 +152,8 @@ td.conflict select { border-color: var(--bad); }
 
 .arrived-note { color: var(--ok); font-size: 0.8rem; font-weight: 600; }
 
+.version { font-size: 0.75rem; font-weight: 500; color: var(--muted); margin-left: 0.3rem; }
+
 .toast {
   position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
   background: #222; color: #fff; padding: 0.55rem 1rem; border-radius: 10px; font-size: 0.9rem;

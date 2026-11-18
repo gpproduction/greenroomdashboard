@@ -109,6 +109,7 @@
     $('login').classList.add('hidden');
     $('app').classList.remove('hidden');
     settings = await api('/api/admin/settings');
+    api('/api/health').then((h) => { $('version').textContent = `v${h.version}`; }).catch(() => {});
     $('demo-note').classList.toggle('hidden', !settings.demo);
     const fromHash = location.hash.slice(1);
     switchTab(renderers[fromHash] ? fromHash : (settings.pco.hasSecret || settings.pco.envCredentials || settings.demo ? 'assign' : 'settings'));

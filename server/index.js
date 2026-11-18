@@ -119,7 +119,9 @@ app.use(express.static(path.join(__dirname, '..', 'public'), { extensions: ['htm
 
 auth.routes(app);
 
-app.get('/api/health', (req, res) => res.json({ ok: true, bootId: BOOT_ID }));
+// App version (from package.json) so it's easy to confirm an update actually took.
+const VERSION = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).version;
+app.get('/api/health', (req, res) => res.json({ ok: true, version: VERSION, bootId: BOOT_ID }));
 app.get('/api/dashboard', (req, res) => res.json({ ...dashboardState(), propresenter: pp.getState(), media: media.getState() }));
 
 const admin = express.Router();
