@@ -14,6 +14,7 @@ import * as sync from './sync.js';
 import * as pp from './propresenter.js';
 import * as demo from './demo.js';
 import * as live from './live.js';
+import * as media from './media.js';
 import { buildRoster, assignmentChanges } from './roster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -109,7 +110,7 @@ app.use(express.static(path.join(__dirname, '..', 'public'), { extensions: ['htm
 auth.routes(app);
 
 app.get('/api/health', (req, res) => res.json({ ok: true, bootId: BOOT_ID }));
-app.get('/api/dashboard', (req, res) => res.json({ ...dashboardState(), propresenter: pp.getState() }));
+app.get('/api/dashboard', (req, res) => res.json({ ...dashboardState(), propresenter: pp.getState(), media: media.getState() }));
 
 const admin = express.Router();
 admin.use(auth.requireAdmin);
@@ -119,6 +120,7 @@ admin.get('/settings', (req, res) => {
   res.json({
     ...settings,
     pco: { ...settings.pco, secret: settings.pco.secret ? '••••••••' : '', hasSecret: Boolean(settings.pco.secret), envCredentials: Boolean(process.env.PCO_APP_ID) },
+    obs: { ...settings.obs, password: settings.obs.password ? '••••••••' : '', hasPassword: Boolean(settings.obs.password) },
     admin: undefined,
     demo: pco.isDemo(),
   });
@@ -136,9 +138,17 @@ admin.put('/settings', (req, res) => {
     if (body.propresenter) Object.assign(s.propresenter, body.propresenter);
     if (body.display) Object.assign(s.display, body.display);
     if (body.live) Object.assign(s.live, body.live);
+    if (body.hyperdeck) Object.assign(s.hyperdeck, body.hyperdeck);
+    if (body.obs) {
+      const { password, hasPassword, ...rest } = body.obs;
+      Object.assign(s.obs, rest);
+      if (password !== undefined && !String(password).startsWith('••')) s.obs.password = password;
+    }
   }, { topic: 'settings' });
   if (body.pco) sync.restart();
   if (body.propresenter) pp.kick();
+  if (body.hyperdeck) media.restart(['hyperdeck']);
+  if (body.obs) media.restart(['obs']);
   res.json({ ok: true });
 });
 
@@ -340,6 +350,20 @@ admin.put('/devices-order', (req, res) => {
 });
 
 // ProPresenter
+// HyperDeck / OBS connection tests
+admin.post('/hyperdeck/test', async (req, res) => {
+  const cfg = { ...store.get().settings.hyperdeck, ...(req.body || {}) };
+  if (!cfg.host) return res.status(400).json({ ok: false, error: 'Enter the HyperDeck IP address' });
+  try { res.json(await media.testHyperDeck(cfg)); } catch (err) { res.status(400).json({ ok: false, error: err.code === 'ECONNREFUSED' ? 'Connection refused (is Ethernet control on?)' : err.message }); }
+});
+admin.post('/obs/test', async (req, res) => {
+  const saved = store.get().settings.obs;
+  const body = req.body || {};
+  const cfg = { ...saved, ...body, password: body.password && !body.password.startsWith('••') ? body.password : saved.password };
+  if (!cfg.host) return res.status(400).json({ ok: false, error: 'Enter the OBS computer’s IP address' });
+  try { res.json(await media.testObs(cfg)); } catch (err) { res.status(400).json({ ok: false, error: err.message }); }
+});
+
 admin.post('/propresenter/test', async (req, res) => {
   const cfg = { ...store.get().settings.propresenter, ...(req.body || {}) };
   if (pco.isDemo() && !cfg.host) return res.json({ ok: true, version: { name: 'Demo' }, timers: pp.getState().timers });
@@ -367,6 +391,7 @@ wss.on('connection', (ws) => {
   ws.on('pong', () => { ws.isAlive = true; });
   ws.send(JSON.stringify({ type: 'state', payload: dashboardState() }));
   ws.send(JSON.stringify({ type: 'propresenter', payload: pp.getState() }));
+  ws.send(JSON.stringify({ type: 'media', payload: media.getState() }));
 });
 
 // Heartbeat: drop dead sockets so clients notice and reconnect.
@@ -386,6 +411,7 @@ function scheduleStateBroadcast() {
 store.events.on('change', (topic) => { if (topic !== 'auth') scheduleStateBroadcast(); });
 sync.events.on('change', scheduleStateBroadcast);
 pp.events.on('change', (s) => broadcast('propresenter', s));
+media.events.on('change', (s) => broadcast('media', s));
 
 // --- start -------------------------------------------------------------------------
 server.listen(PORT, HOST, () => {
@@ -393,6 +419,7 @@ server.listen(PORT, HOST, () => {
   sync.start();
   pp.start();
   live.start();
+  media.start();
 });
 
 function shutdown() {

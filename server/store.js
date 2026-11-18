@@ -46,6 +46,8 @@ function defaults() {
         preRollMinutes: 20, // start recording this long before each service time
         postRollMinutes: 15, // keep recording this long after it ends
       },
+      hyperdeck: { enabled: false, host: '', port: 9993 }, // Blackmagic HyperDeck Ethernet protocol
+      obs: { enabled: false, host: '', port: 4455, password: '' }, // obs-websocket v5
       admin: { passwordHash: null },
     },
     devices: [], // { id, type: 'mic'|'iem', name, channel, frequency, kind, notes, active, linkedId }

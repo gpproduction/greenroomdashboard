@@ -17,6 +17,7 @@
   const $ = (id) => document.getElementById(id);
   let state = null;
   let pp = { connected: false, timers: [] };
+  let media = null; // { hyperdeck, obs } recorder/encoder status
   let bootId = null;
   let wsConnected = false;
   const loadedAt = Date.now();
@@ -289,6 +290,45 @@
     }
   }
 
+  // HyperDeck / OBS pills in the footer. "on" = recording/streaming (red), "warn" = paused or
+  // reconnecting, "idle" = connected but not running, "offline" = can't reach the device.
+  function obsTime(tc) {
+    if (!tc) return '';
+    const [h, m, s] = tc.split('.')[0].split(':').map(Number);
+    return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+  }
+  function pill(kind, label, state, word, time) {
+    return el('span', { class: `pill ${state}` }, el('i', { class: 'dot' }), el('span', { class: 'pill-label' }, label),
+      word ? el('b', {}, word) : null, time ? el('span', { class: 'tc' }, time) : null);
+  }
+  function renderMedia() {
+    const box = $('media');
+    if (!box) return;
+    const pills = [];
+    const h = media?.hyperdeck;
+    if (h?.enabled) {
+      if (!h.connected) pills.push(pill('hd', 'HyperDeck', 'offline', 'Offline'));
+      else if (h.status === 'record') pills.push(pill('hd', 'HyperDeck', 'on', 'REC', h.timecode));
+      else if (h.status === 'play') pills.push(pill('hd', 'HyperDeck', 'idle', 'PLAY', h.timecode));
+      else pills.push(pill('hd', 'HyperDeck', 'idle', 'Stopped', h.timecode));
+    }
+    const o = media?.obs;
+    if (o?.enabled) {
+      if (!o.connected) pills.push(pill('obs', 'OBS', 'offline', 'Offline'));
+      else {
+        const st = o.stream;
+        pills.push(st?.reconnecting ? pill('obs', 'Stream', 'warn', 'RECONNECTING', obsTime(st.timecode))
+          : st?.active ? pill('obs', 'Stream', 'on', 'LIVE', obsTime(st.timecode))
+            : pill('obs', 'Stream', 'idle', 'Off'));
+        const rc = o.record;
+        pills.push(rc?.paused ? pill('obs', 'OBS Record', 'warn', 'PAUSED', obsTime(rc.timecode))
+          : rc?.active ? pill('obs', 'OBS Record', 'on', 'REC', obsTime(rc.timecode))
+            : pill('obs', 'OBS Record', 'idle', 'Off'));
+      }
+    }
+    box.replaceChildren(...pills);
+  }
+
   function renderStatus() {
     const set = (id, cls, title) => { const n = $(id); n.className = cls; n.title = title || ''; };
     set('status-pco', state?.pco?.ok ? 'ok' : 'bad', state?.pco?.error || (state?.pco?.lastSync ? `Last sync ${fmtTime(state.pco.lastSync)}` : ''));
@@ -357,6 +397,7 @@
     ws.onmessage = (ev) => {
       const msg = JSON.parse(ev.data);
       if (msg.type === 'state') onState(msg.payload);
+      if (msg.type === 'media') { media = msg.payload; renderMedia(); }
       if (msg.type === 'propresenter') {
         pp = msg.payload;
         if (state) { renderTimers(); renderOrder(); renderStatus(); }
@@ -378,6 +419,8 @@
       const res = await fetch('/api/dashboard', { cache: 'no-store' });
       const data = await res.json();
       pp = data.propresenter;
+      media = data.media;
+      renderMedia();
       onState(data);
     } catch { /* server unreachable — keep showing last data */ }
   }

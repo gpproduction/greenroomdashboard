@@ -211,10 +211,34 @@ body.layout-timers .timer .time { font-size: 7rem; }
 
 /* Footer ------------------------------------------------------------------------ */
 .status {
-  display: flex; gap: 1.4rem; justify-content: flex-end;
-  padding: 0.35rem 1.4rem; font-size: 0.75rem; color: var(--muted);
+  display: flex; gap: 1.4rem; justify-content: space-between; align-items: center;
+  padding: 0.4rem 1.4rem; font-size: 0.75rem; color: var(--muted);
   border-top: 1px solid var(--line);
 }
+.status .conns { display: flex; gap: 1.4rem; margin-left: auto; }
+
+/* Recorder / stream pills (HyperDeck, OBS) */
+.media { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.pill {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.25rem 0.7rem; border-radius: 99px;
+  background: var(--panel); border: 1px solid var(--line);
+  font-size: 0.95rem; color: var(--text);
+}
+.pill .pill-label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.pill b { font-weight: 800; letter-spacing: 0.04em; }
+.pill .tc { font-variant-numeric: tabular-nums; font-weight: 700; }
+.pill .dot { margin-right: 0; }
+.pill.on { border-color: rgba(255, 77, 77, 0.6); background: rgba(255, 77, 77, 0.12); }
+.pill.on .dot { background: #ff4d4d; animation: pulse 1.6s ease-in-out infinite; }
+.pill.on b { color: #ff8080; }
+.pill.warn { border-color: var(--warn); }
+.pill.warn .dot { background: var(--warn); }
+.pill.warn b { color: var(--warn); }
+.pill.idle .dot { background: var(--ok); }
+.pill.idle b { color: var(--muted); font-weight: 600; }
+.pill.offline { opacity: 0.6; }
+.pill.offline .dot { background: var(--bad); }
 .dot { display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--muted); margin-right: 0.4rem; vertical-align: middle; }
 .ok .dot { background: var(--ok); }
 .bad .dot { background: var(--bad); }

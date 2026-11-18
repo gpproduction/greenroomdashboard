@@ -767,6 +767,51 @@
         },
       }, 'Change password')));
 
+    // HyperDeck & OBS ------------------------------------------------------------------
+    const testButton = (url, body, resultEl, describe) => el('button', {
+      onclick: async () => {
+        resultEl.textContent = 'Testing…';
+        resultEl.className = 'help';
+        try {
+          const r = await api(url, { method: 'POST', body: body() });
+          resultEl.textContent = describe(r);
+          resultEl.className = 'help ok-text';
+        } catch (err) {
+          resultEl.textContent = err.message;
+          resultEl.className = 'help error';
+        }
+      },
+    }, 'Test connection');
+
+    const hdResult = el('div', { class: 'help' });
+    const hdSection = el('div', { class: 'section' },
+      el('h2', {}, 'HyperDeck'),
+      el('p', { class: 'help' }, 'Shows the HyperDeck’s record status and timecode along the bottom of the dashboard. On the HyperDeck, make sure Ethernet/remote control is enabled and note its IP address (shown on its front-panel Setup menu or in Blackmagic HyperDeck Setup).'),
+      check('Connect to HyperDeck', s.hyperdeck, 'enabled'),
+      el('div', { class: 'grid2' },
+        field('IP address', el('input', { value: s.hyperdeck.host, placeholder: '192.168.1.60', oninput: (e) => { s.hyperdeck.host = e.target.value.trim(); } })),
+        field('Port', el('input', { type: 'number', value: s.hyperdeck.port, oninput: (e) => { s.hyperdeck.port = Number(e.target.value); } }), 'Normally 9993')),
+      el('div', { class: 'row', style: 'margin-top:0.6rem' },
+        testButton('/api/admin/hyperdeck/test', () => ({ host: s.hyperdeck.host, port: s.hyperdeck.port }), hdResult,
+          (r) => `✓ Connected to ${r.model}${r.status ? ` — ${r.status}` : ''}${r.timecode ? ` at ${r.timecode}` : ''}`),
+        el('button', { class: 'primary', onclick: () => saveSection('hyperdeck') }, 'Save HyperDeck settings')),
+      hdResult);
+
+    const obsResult = el('div', { class: 'help' });
+    const obsSection = el('div', { class: 'section' },
+      el('h2', {}, 'OBS'),
+      el('p', { class: 'help' }, 'Shows OBS stream and recording time along the bottom of the dashboard. In OBS open Tools → WebSocket Server Settings, tick “Enable WebSocket server”, and use “Show Connect Info” for the IP, port and password.'),
+      check('Connect to OBS', s.obs, 'enabled'),
+      el('div', { class: 'grid2' },
+        field('IP address', el('input', { value: s.obs.host, placeholder: '192.168.1.70', oninput: (e) => { s.obs.host = e.target.value.trim(); } })),
+        field('Port', el('input', { type: 'number', value: s.obs.port, oninput: (e) => { s.obs.port = Number(e.target.value); } }), 'Normally 4455'),
+        field('Password', el('input', { type: 'password', value: s.obs.password, autocomplete: 'new-password', placeholder: 'Leave blank if authentication is off', oninput: (e) => { s.obs.password = e.target.value; } }))),
+      el('div', { class: 'row', style: 'margin-top:0.6rem' },
+        testButton('/api/admin/obs/test', () => ({ host: s.obs.host, port: s.obs.port, password: s.obs.password }), obsResult,
+          (r) => `✓ Connected${r.obsVersion ? ` to OBS ${r.obsVersion}` : ''}`),
+        el('button', { class: 'primary', onclick: () => saveSection('obs') }, 'Save OBS settings')),
+      obsResult);
+
     // Live item timing -----------------------------------------------------------------
     const liveSection = el('div', { class: 'section' },
       el('h2', {}, 'Live item timing'),
@@ -777,7 +822,7 @@
         field('Keep recording after each service ends (minutes)', el('input', { type: 'number', min: 0, max: 120, value: s.live.postRollMinutes, oninput: (e) => { s.live.postRollMinutes = Number(e.target.value); } }), 'In case the service runs long.')),
       el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('live') }, 'Save timing settings')));
 
-    root.replaceChildren(pcoSection, ppSection, liveSection, displaySection, pwSection);
+    root.replaceChildren(pcoSection, ppSection, hdSection, obsSection, liveSection, displaySection, pwSection);
     if (s.pco.hasSecret || s.pco.envCredentials || s.demo) loadServiceTypes();
     loadPlanChoices();
   }
