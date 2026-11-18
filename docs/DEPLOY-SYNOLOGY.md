@@ -59,8 +59,11 @@ Open `http://<nas-ip>:8080/admin` from any computer on the church network.
 3. **Settings → ProPresenter**:
    - On the ProPresenter Mac, open ProPresenter → Settings → Network, tick **Enable Network**, and note the IP address and port.
    - Enter them here, click **Test connection**, choose the timers, then click **Save**.
-4. **Devices**: add your mics and IEMs, then pair them (**Pair mics and IEMs by list order**).
-5. **Assign**: assign this week's people.
+4. **Settings → HyperDeck** (optional): turn on Ethernet control on the HyperDeck, enter its IP address (port 9993), click **Test connection**, then click **Save**.
+5. **Settings → OBS** (optional): in OBS, go to *Tools → WebSocket Server Settings* and tick *Enable WebSocket server*. Use *Show Connect Info* for the IP address, port and password. Enter them here, click **Test connection**, then click **Save**.
+6. **Devices**: add your mics and IEMs, then pair them (**Pair mics and IEMs by list order**).
+7. **Assign**: assign this week's people.
+8. **Live → Start production test**: click through ProPresenter and confirm each item shows as matched and its time counts up. Then click **Stop test** and **Clear test times**.
 
 ## 5. Greenroom TVs
 
