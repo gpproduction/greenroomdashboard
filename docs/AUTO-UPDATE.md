@@ -22,9 +22,8 @@ On GitHub, open the repository, go to **Actions**, and look at **Build & publish
 The repository is private, so the published image (the "package") starts out private too. Pick **one** option.
 
 **Option A: make the package public (recommended, simplest)**
-1. On GitHub, go to **gpproduction → Packages → greenroomdashboard → Package settings**.
+1. Signed in as **gpproduction**, open <https://github.com/gpproduction?tab=packages>, click **greenroomdashboard**, then **Package settings** (on the right).
 2. Under **Danger Zone**, click **Change visibility** and choose **Public**.
-   - If Public isn't offered, an organization owner must first allow it under *Organization settings → Packages*.
 
 Your **source code stays private**; only the ready-to-run app becomes downloadable. It contains no passwords or keys. Those live only in the NAS's `data` folder.
 
