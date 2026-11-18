@@ -177,6 +177,9 @@ body.layout-timers .timer .time { font-size: 7rem; }
   display: grid; grid-template-columns: minmax(0, 1fr) 10rem 6.2rem; gap: 0.8rem; align-items: start;
   padding: 0.45rem 0.6rem; border-radius: 9px; font-size: 1.3rem;
 }
+/* Faint dividers between items, like the timers */
+.order li:not(.header):not(.total) { border-bottom: 1px solid var(--line); border-radius: 0; }
+.order li.active:not(.header) { border-radius: 9px; border-bottom-color: transparent; }
 .order li.cols {
   font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;
   padding-top: 0; padding-bottom: 0.2rem;
