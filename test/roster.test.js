@@ -19,11 +19,16 @@ const db = (over = {}) => ({
   assignments: {}, defaults: {}, extras: {}, ...over,
 });
 
-test('merges positions, filters teams and declined people', () => {
-  const { teams } = buildRoster(detail, db());
-  assert.deepEqual(teams.map((t) => t.name), ['Worship']);
+test('merges positions, filters teams/declined, dashboard shows only assigned people', () => {
+  const data = db({ defaults: { 'p:1': { mic: 'm1' }, 'p:3': { mic: 'm1' }, 'p:4': { iem: 'e1' } } });
+  const { teams } = buildRoster(detail, data);
+  assert.deepEqual(teams.map((t) => t.name), ['Worship']); // Cy declined, Host team filtered out
+  assert.deepEqual(teams[0].members.map((m) => m.name), ['Ann']); // Bob has nothing assigned
   assert.deepEqual(teams[0].members[0].positions, ['Vocals', 'Keys']);
   assert.equal(teams[0].members[0].status, 'C');
+  // The admin view still lists everyone so they can be assigned.
+  const admin = buildRoster(detail, data, { forAdmin: true });
+  assert.deepEqual(admin.teams.find((t) => t.name === 'Worship').members.map((m) => m.name), ['Ann', 'Bob']);
 });
 
 test('defaults fill in, explicit per-plan choice (including none) wins', () => {
@@ -55,3 +60,41 @@ test('pickActivePlan keeps a plan until 2h after its last time', () => {
   assert.equal(pickActivePlan(plans, Date.parse('2026-11-22T19:00:00Z')).id, 'a');
   assert.equal(pickActivePlan(plans, Date.parse('2026-11-22T20:00:00Z')).id, 'b');
 });
+
+import { assignmentChanges } from '../server/roster.js';
+
+const linkDb = (over = {}) => ({
+  devices: [
+    { id: 'm1', type: 'mic', linkedId: 'e1' }, { id: 'e1', type: 'iem', linkedId: 'm1' },
+    { id: 'm2', type: 'mic', linkedId: 'e2' }, { id: 'e2', type: 'iem', linkedId: 'm2' },
+    { id: 'e9', type: 'iem', linkedId: null }, { id: 'm9', type: 'mic', linkedId: null },
+  ],
+  assignments: {}, defaults: {}, ...over,
+});
+
+test('linked: picking a mic fills the empty IEM slot', () => {
+  assert.deepEqual(assignmentChanges(linkDb(), 'P', 'k', 'mic', 'm1'), { mic: 'm1', iem: 'e1' });
+});
+
+test('linked: switching mic moves the IEM along with it', () => {
+  const db = linkDb({ assignments: { P: { k: { mic: 'm1', iem: 'e1' } } } });
+  assert.deepEqual(assignmentChanges(db, 'P', 'k', 'mic', 'm2'), { mic: 'm2', iem: 'e2' });
+});
+
+test('linked: a manually overridden IEM is left alone', () => {
+  const db = linkDb({ assignments: { P: { k: { mic: 'm1', iem: 'e9' } } } });
+  assert.deepEqual(assignmentChanges(db, 'P', 'k', 'mic', 'm2'), { mic: 'm2' });
+});
+
+test('linked: changing the IEM never changes the mic', () => {
+  const db = linkDb({ assignments: { P: { k: { mic: 'm1', iem: 'e1' } } } });
+  assert.deepEqual(assignmentChanges(db, 'P', 'k', 'iem', 'e2'), { iem: 'e2' });
+  assert.deepEqual(assignmentChanges(linkDb(), 'P', 'k', 'iem', 'e2'), { iem: 'e2' }); // IEM-only (drummer)
+});
+
+test('linked: clearing the mic clears its partner IEM; unlinked mic leaves slot empty', () => {
+  const db = linkDb({ defaults: { k: { mic: 'm1', iem: 'e1' } } });
+  assert.deepEqual(assignmentChanges(db, 'P', 'k', 'mic', null), { mic: null, iem: null });
+  assert.deepEqual(assignmentChanges(db, 'P', 'k', 'mic', 'm9'), { mic: 'm9', iem: null });
+});
+

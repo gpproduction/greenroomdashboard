@@ -22,6 +22,7 @@ function defaults() {
         pinnedServiceTypeId: null,
         pollSeconds: 60,
         hideDeclined: true,
+        leaderNoteCategories: 'Lead', // item note categories holding the item's leader (comma-separated)
       },
       propresenter: {
         enabled: false,
@@ -36,12 +37,11 @@ function defaults() {
         showOrderOfService: true,
         showTimers: true,
         showServiceCountdown: true,
-        showUnassigned: true,
         reloadHours: 6,
       },
       admin: { passwordHash: null },
     },
-    devices: [], // { id, type: 'mic'|'iem', name, channel, frequency, kind, color, notes, active }
+    devices: [], // { id, type: 'mic'|'iem', name, channel, frequency, kind, notes, active, linkedId }
     assignments: {}, // planId -> personKey -> { mic?: deviceId|null, iem?: deviceId|null }
     defaults: {}, // personKey -> { mic, iem }   (last-used, auto-fills future plans)
     extras: {}, // planId -> [{ key, name, role }]   (guests not in Planning Center)

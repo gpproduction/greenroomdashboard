@@ -107,6 +107,13 @@ th, td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(
 th { font-size: 0.8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 td select { width: 100%; }
 .person-name { font-weight: 600; }
+.person-cell { display: flex; align-items: center; gap: 0.6rem; }
+.person-cell.unassigned { opacity: 0.6; }
+.mini-avatar {
+  width: 2.2rem; height: 2.2rem; flex: none; border-radius: 0.45rem; object-fit: cover;
+  background: var(--bg); border: 1px solid var(--line);
+  display: grid; place-items: center; font-size: 0.75rem; font-weight: 700; color: var(--muted);
+}
 .status-U { color: var(--warn); font-size: 0.8rem; }
 .source-default { font-size: 0.75rem; color: var(--muted); }
 .swatch { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 3px; vertical-align: middle; margin-right: 0.3rem; border: 1px solid var(--line); }
@@ -123,6 +130,7 @@ td.conflict select { border-color: var(--bad); }
 /* Devices */
 .devices-table input:not([type="checkbox"]):not([type="color"]) { width: 100%; }
 .devices-table td { padding: 0.3rem 0.35rem; }
+.devices-table select { min-width: 7.5rem; }
 
 .toast {
   position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);

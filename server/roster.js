@@ -65,7 +65,7 @@ export function buildRoster(detail, db, { forAdmin = false } = {}) {
       for (const field of ['mic', 'iem']) {
         const r = resolve(planAssign, db.defaults, m.key, field);
         const dev = r.id ? devices.get(r.id) : null;
-        row[field] = dev ? { id: dev.id, name: dev.name, channel: dev.channel, frequency: dev.frequency, kind: dev.kind, color: dev.color, source: r.source } : null;
+        row[field] = dev ? { id: dev.id, name: dev.name, channel: dev.channel, frequency: dev.frequency, kind: dev.kind, linkedId: dev.linkedId || null, source: r.source } : null;
         if (dev && (!forAdmin || t.inFilter !== false)) {
           if (!usage.has(dev.id)) usage.set(dev.id, []);
           usage.get(dev.id).push(m.name);
@@ -75,9 +75,39 @@ export function buildRoster(detail, db, { forAdmin = false } = {}) {
     }),
   }));
 
+  // The board only lists people who actually have a mic or IEM this week.
+  const visible = forAdmin ? out : out
+    .map((t) => ({ ...t, members: t.members.filter((m) => m.mic || m.iem) }))
+    .filter((t) => t.members.length);
+
   const conflicts = [...usage.entries()]
     .filter(([, names]) => new Set(names).size > 1)
     .map(([id, names]) => ({ deviceId: id, deviceName: devices.get(id)?.name, people: [...new Set(names)] }));
 
-  return { teams: out, conflicts };
+  return { teams: visible, conflicts };
+}
+
+/**
+ * What to write when someone's `field` ('mic'|'iem') is set to `value`.
+ * Linked pairs flow one way, mic → IEM: picking a mic also picks its paired IEM,
+ * but only when the IEM slot is empty or still holds the old mic's partner, so a
+ * hand-picked IEM is never clobbered. Changing an IEM never touches the mic
+ * (band members often get an IEM without a mic).
+ */
+export function assignmentChanges(db, planId, key, field, value, { linked = true } = {}) {
+  const changes = { [field]: value };
+  if (!linked || field !== 'mic') return changes;
+  const other = 'iem';
+  const byId = new Map(db.devices.map((d) => [d.id, d]));
+  const current = (f) => {
+    const a = db.assignments[planId]?.[key];
+    return a && f in a ? a[f] : db.defaults[key]?.[f] ?? null;
+  };
+  const oldPartner = byId.get(current(field))?.linkedId || null;
+  const newPartner = byId.get(value)?.linkedId || null;
+  const otherNow = current(other);
+  if (otherNow != null && otherNow !== oldPartner) return changes; // manual override: leave it
+  const next = value && newPartner ? newPartner : null;
+  if (next !== otherNow) changes[other] = next;
+  return changes;
 }

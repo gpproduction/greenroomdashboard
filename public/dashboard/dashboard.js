@@ -100,9 +100,19 @@
     if (!dev) return el('span', { class: 'chip empty' }, el('span', { class: 'k' }, label), '—');
     return el('span', {
       class: 'chip' + (conflictIds.has(dev.id) ? ' conflict' : ''),
-      style: `--chip:${dev.color || '#888'}`,
       title: [dev.kind, dev.frequency].filter(Boolean).join(' · '),
     }, el('span', { class: 'k' }, label), dev.name, dev.channel ? el('span', { class: 'ch' }, `ch ${dev.channel}`) : null);
+  }
+
+  // Planning Center photo when the person has one, otherwise their initials.
+  function hasPhoto(url) {
+    return url && /^https:\/\//.test(url) && !/no_photo|default|placeholder/i.test(url);
+  }
+  function avatar(m) {
+    if (!hasPhoto(m.photo)) return el('div', { class: 'avatar' }, initials(m.name));
+    const img = el('img', { class: 'avatar', src: m.photo, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
+    img.onerror = () => img.replaceWith(el('div', { class: 'avatar' }, initials(m.name)));
+    return img;
   }
 
   function renderRoster() {
@@ -117,18 +127,16 @@
       return;
     }
     if (!teams.length) {
-      root.append(el('div', { class: 'empty-state' }, 'No team members to show for this plan.'));
+      root.append(el('div', { class: 'empty-state' }, 'No mics or IEMs assigned yet for this plan.'));
       return;
     }
 
     for (const team of teams) {
-      let members = team.members;
-      if (!state.display.showUnassigned) members = members.filter((m) => m.mic || m.iem);
-      if (!members.length) continue;
+      const members = team.members; // server only sends people with a mic or IEM
       root.append(el('div', { class: 'team' },
         el('h3', {}, team.name),
         members.map((m) => el('div', { class: 'person' + (m.status === 'U' ? ' unconfirmed' : '') },
-          el('div', { class: 'avatar', style: m.photo && !m.photo.includes('default') ? `background-image:url("${encodeURI(m.photo)}")` : null }, m.photo && !m.photo.includes('default') ? '' : initials(m.name)),
+          avatar(m),
           el('div', { class: 'who' },
             el('div', { class: 'name' }, m.name),
             el('div', { class: 'pos' }, m.positions.join(', '), m.status === 'U' ? el('span', { class: 'tag' }, 'unconfirmed') : null)),
@@ -158,7 +166,8 @@
       const t = normalise(item.title);
       const isActive = active && t && (t === active || active.includes(t) || t.includes(active));
       list.append(el('li', { class: [isActive ? 'active' : '', item.position !== 'during' ? 'prepost' : ''].join(' ') },
-        el('span', {}, item.title, item.key ? el('span', { class: 'key' }, item.key) : null),
+        el('span', {}, item.title, item.key ? el('span', { class: 'key' }, item.key) : null,
+          item.leader ? el('span', { class: 'leader' }, item.leader) : null),
         el('span', { class: 'len' }, item.length ? fmtDuration(item.length) : '')));
     }
   }

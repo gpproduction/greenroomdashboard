@@ -150,13 +150,14 @@ export async function planDetail(serviceTypeId, planId) {
   const base = `/service_types/${serviceTypeId}/plans/${planId}`;
   const [planRes, itemsRes, membersRes] = await Promise.all([
     request(base, { include: 'plan_times,series' }),
-    requestAll(`${base}/items`),
+    requestAll(`${base}/items`, { include: 'item_notes' }),
     requestAll(`${base}/team_members`, { include: 'team' }),
   ]);
 
   const p = planRes.data;
   const planInc = indexIncluded(planRes.included);
   const teamInc = indexIncluded(membersRes.included);
+  const noteInc = indexIncluded(itemsRes.included);
 
   const items = itemsRes.data
     .map((i) => ({
@@ -168,6 +169,10 @@ export async function planDetail(serviceTypeId, planId) {
       position: i.attributes.service_position, // pre | during | post
       key: i.attributes.key_name,
       description: i.attributes.description,
+      notes: (i.relationships?.item_notes?.data || [])
+        .map((ref) => noteInc.get(`ItemNote:${ref.id}`))
+        .filter(Boolean)
+        .map((n) => ({ category: n.attributes.category_name, content: n.attributes.content })),
     }))
     .sort((a, b) => a.sequence - b.sequence);
 

@@ -2,8 +2,8 @@
 
 A self-hosted mic and in-ear-monitor assignment board for church production teams.
 
-- **Planning Center Services**: pulls the current or next plan, with its order of service, service times and scheduled team members.
-- **Assignments**: you assign wireless mics and IEMs to each person in the admin backend. Each person's last choice is remembered and pre-fills future plans.
+- **Planning Center Services**: pulls the current or next plan, with its order of service (including each item's leader), service times, and scheduled team members with their Planning Center photos.
+- **Assignments**: you assign wireless mics and IEMs to each person in the admin backend. Each mic can be linked to an IEM, so picking the mic brings its IEM along, and you can still change the IEM on its own. Each person's last choice is remembered and pre-fills future plans. Only people with something assigned appear on the board.
 - **ProPresenter 7**: shows live timers and highlights the item that's currently on screen.
 - **Dashboard**: a full-screen page for Chrome on a greenroom TV. It updates live over a WebSocket, reconnects by itself, and reloads itself when the server is updated.
 
@@ -50,14 +50,17 @@ Data (settings, devices and assignments) is stored in `./data/db.json`. Back up 
    - Paste the Application ID and Secret, then click **Test & connect**.
    - Tick the service types to pull from (e.g. Sunday Morning).
    - Tick the teams to show on the dashboard (e.g. Worship Team, Production Team, Choir) and put them in order.
+   - The leader shown for each order-of-service item comes from an item note column. Yours is **Lead**; you can change this in Settings.
    - Save.
 3. **Settings → ProPresenter**:
    - In ProPresenter 7 go to *Settings → Network*, tick *Enable Network*, and note the IP and port.
    - Enter the IP and port here, click **Test connection**, and choose which timers to show.
    - Save.
-4. **Devices**: add your mics and IEMs, with name, channel, frequency and color. The colors appear on the TV, so people can match their pack at a glance.
+4. **Devices**: add your mics and IEMs, with name, channel and frequency. Link each mic to its IEM in the *Linked IEM* column, or click **Pair mics and IEMs by list order**.
 5. **Assign**: pick a plan and choose a mic and an IEM per person.
    - Choices save instantly and remember each person.
+   - Picking a mic also picks its linked IEM, unless that person already has a different IEM. Picking only an IEM (e.g. for a drummer) never adds a mic.
+   - Only people with a mic or IEM appear on the dashboard.
    - Conflicts (the same device given to two people) are flagged in red, both here and on the dashboard.
    - Use *Add someone not in Planning Center* for guests.
 

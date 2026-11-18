@@ -168,6 +168,14 @@
     }
   }
 
+  function avatar(m) {
+    const initials = m.name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join('');
+    if (!m.photo || !/^https:\/\//.test(m.photo) || /no_photo|default|placeholder/i.test(m.photo)) return el('div', { class: 'mini-avatar' }, initials);
+    const img = el('img', { class: 'mini-avatar', src: m.photo, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
+    img.onerror = () => img.replaceWith(el('div', { class: 'mini-avatar' }, initials));
+    return img;
+  }
+
   function deviceOptions(type, current, usedBy) {
     const list = devices.filter((d) => d.type === type && (d.active || d.id === current));
     return [
@@ -193,7 +201,7 @@
         plan.id === activeId ? el('span', { class: 'badge live' }, 'Showing on dashboard') : el('span', { class: 'badge' }, 'Not on dashboard'),
         el('a', { href: plan.url, target: '_blank', rel: 'noopener' }, 'Open in Planning Center ↗'),
       ),
-      el('p', { class: 'help' }, 'Assignments save instantly and appear on the dashboard within a second. Each person\'s choice is remembered and pre-fills future plans (marked “auto”).'),
+      el('p', { class: 'help' }, 'Assignments save instantly and appear on the dashboard within a second. Only people with a mic or IEM show on the dashboard. Picking a mic also picks its linked IEM; you can still change the IEM on its own. Each person\'s choice is remembered and pre-fills future plans (marked “auto”).'),
       meta?.times?.length ? el('p', { class: 'help' }, meta.times.map((t) => `${t.name || (t.type === 'service' ? 'Service' : t.type)} ${new Date(t.startsAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`).join(' · ')) : null,
     );
 
@@ -209,8 +217,12 @@
           const sel = el('select', {
             onchange: async (e) => {
               try {
-                await api(`/api/admin/plans/${plan.id}/assignments/${encodeURIComponent(m.key)}`, { method: 'PUT', body: { field, deviceId: e.target.value || null } });
-                toast(`Saved ${m.name}`);
+                const r = await api(`/api/admin/plans/${plan.id}/assignments/${encodeURIComponent(m.key)}`, { method: 'PUT', body: { field, deviceId: e.target.value || null } });
+                const other = field === 'mic' ? 'iem' : 'mic';
+                if (other in (r.changes || {})) {
+                  const d = devices.find((x) => x.id === r.changes[other]);
+                  toast(`Saved ${m.name} · linked ${other.toUpperCase()} ${d ? `→ ${d.name}` : 'cleared'}`);
+                } else toast(`Saved ${m.name}`);
                 reload();
               } catch (err) { toast(err.message, true); }
             },
@@ -220,9 +232,11 @@
             m[field]?.source === 'default' ? el('div', { class: 'source-default' }, 'auto (remembered)') : null);
         };
         return el('tr', {},
-          el('td', {},
+          el('td', { class: 'person-cell' + (m.mic || m.iem ? '' : ' unassigned') },
+            avatar(m),
+            el('div', {},
             el('div', { class: 'person-name' }, m.name, m.status === 'U' ? el('span', { class: 'status-U' }, '  unconfirmed') : null),
-            el('div', { class: 'help' }, m.positions.join(', ')),
+            el('div', { class: 'help' }, m.positions.join(', '))),
             m.extra ? el('button', {
               class: 'small danger',
               onclick: async () => { await api(`/api/admin/plans/${plan.id}/extras/${encodeURIComponent(m.key)}`, { method: 'DELETE' }); reload(); },
@@ -294,6 +308,19 @@
       renderDevices();
     };
 
+    const linkSelect = (d) => {
+      const partners = devices.filter((x) => x.type !== d.type);
+      return el('select', {
+        onchange: async (e) => {
+          try {
+            await api(`/api/admin/devices/${d.id}/link`, { method: 'PUT', body: { linkedId: e.target.value || null } });
+            toast('Link saved');
+            renderDevices();
+          } catch (err) { toast(err.message, true); }
+        },
+      }, el('option', { value: '' }, '— none —'), partners.map((p) => el('option', { value: p.id, selected: p.id === d.linkedId }, p.name)));
+    };
+
     const table = (type, label) => {
       const list = devices.filter((d) => d.type === type);
       return el('div', { class: 'section' },
@@ -308,16 +335,16 @@
             },
           }, `+ Add ${type === 'mic' ? 'mic' : 'IEM'}`)),
         list.length ? el('div', { class: 'table-wrap' }, el('table', { class: 'devices-table' },
-          el('thead', {}, el('tr', {}, ['', 'Color', 'Name', 'Channel', 'Frequency', 'Type / model', 'Notes', 'Active', ''].map((h) => el('th', {}, h)))),
+          el('thead', {}, el('tr', {}, ['', 'Name', 'Channel', 'Frequency', 'Type / model', type === 'mic' ? 'Linked IEM' : 'Linked mic', 'Notes', 'Active', ''].map((h) => el('th', {}, h)))),
           el('tbody', {}, list.map((d) => el('tr', {},
             el('td', { style: 'white-space:nowrap' },
               el('button', { class: 'small ghost', title: 'Move up', onclick: () => move(d, -1) }, '↑'),
               el('button', { class: 'small ghost', title: 'Move down', onclick: () => move(d, 1) }, '↓')),
-            el('td', {}, el('input', { type: 'color', value: d.color || '#888888', oninput: (e) => save(d, { color: e.target.value }) })),
             el('td', {}, el('input', { value: d.name, oninput: (e) => save(d, { name: e.target.value }) })),
             el('td', { style: 'width:6rem' }, el('input', { value: d.channel, oninput: (e) => save(d, { channel: e.target.value }) })),
             el('td', {}, el('input', { value: d.frequency, placeholder: 'e.g. 518.250 MHz', oninput: (e) => save(d, { frequency: e.target.value }) })),
             el('td', {}, el('input', { value: d.kind, placeholder: type === 'mic' ? 'Handheld / Headset' : 'Pack / Wired', oninput: (e) => save(d, { kind: e.target.value }) })),
+            el('td', {}, linkSelect(d)),
             el('td', {}, el('input', { value: d.notes, oninput: (e) => save(d, { notes: e.target.value }) })),
             el('td', {}, el('input', { type: 'checkbox', checked: d.active, onchange: (e) => save(d, { active: e.target.checked }) })),
             el('td', {}, el('button', {
@@ -332,7 +359,18 @@
     };
 
     root.replaceChildren(
-      el('p', { class: 'help' }, 'Your wireless inventory. Colors show on the dashboard so people can match their pack/mic at a glance. Untick “Active” for gear that is out for repair.'),
+      el('div', { class: 'section' },
+        el('h2', {}, 'Mic ↔ IEM links'),
+        el('p', { class: 'help' }, 'Linked devices are assigned together: picking a mic for someone also gives them its IEM. You can still change the IEM per person, and picking just an IEM never adds a mic. Set links in the tables below, or pair them up by list order:'),
+        el('button', {
+          onclick: async () => {
+            if (!confirm('Replace all links, pairing the 1st mic with the 1st IEM, 2nd with 2nd, and so on?')) return;
+            const r = await api('/api/admin/devices/auto-link', { method: 'POST' });
+            toast(`Linked ${r.linked} pairs`);
+            renderDevices();
+          },
+        }, 'Pair mics and IEMs by list order')),
+      el('p', { class: 'help' }, 'Your wireless inventory. Untick “Active” for gear that is out for repair.'),
       table('mic', 'Microphones'),
       table('iem', 'In-ear monitors'),
     );
@@ -444,6 +482,9 @@
         field('Plan', planSel, 'Automatic switches to the next plan two hours after the last service ends.'),
         field('Refresh every (seconds)', el('input', { type: 'number', min: 20, value: s.pco.pollSeconds, oninput: (e) => { s.pco.pollSeconds = Number(e.target.value); } }))),
       check('Hide people who declined', s.pco, 'hideDeclined'),
+      el('div', { class: 'grid2', style: 'margin-top:0.5rem' },
+        field('Item note category for the leader', el('input', { value: s.pco.leaderNoteCategories, oninput: (e) => { s.pco.leaderNoteCategories = e.target.value; } }),
+          'The item note column that holds who leads each item (yours is “Lead”). Separate several with commas.')),
       el('div', { class: 'row', style: 'margin-top:0.8rem' }, el('button', { class: 'primary', onclick: () => saveSection('pco') }, 'Save Planning Center settings')),
     );
 
@@ -502,7 +543,6 @@
       check('Show ProPresenter timers', s.display, 'showTimers'),
       check('Show order of service', s.display, 'showOrderOfService'),
       check('Show countdown to the next service time', s.display, 'showServiceCountdown'),
-      check('Show people with no mic or IEM assigned', s.display, 'showUnassigned'),
       el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('display') }, 'Save display settings')),
       el('h3', {}, 'Dashboard links'),
       el('ul', { class: 'help' },

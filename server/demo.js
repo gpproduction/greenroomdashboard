@@ -78,32 +78,33 @@ export function planDetail() {
       { id: 'i0', title: 'Pre-Service', type: 'header', length: 0, sequence: 0, position: 'pre' },
       { id: 'i1', title: 'Countdown', type: 'media', length: 300, sequence: 1, position: 'pre' },
       { id: 'i2', title: 'Worship', type: 'header', length: 0, sequence: 2, position: 'during' },
-      { id: 'i3', title: 'Opening Song', type: 'song', length: 270, sequence: 3, position: 'during', key: 'G' },
-      { id: 'i4', title: 'Second Song', type: 'song', length: 300, sequence: 4, position: 'during', key: 'D' },
-      { id: 'i5', title: 'Welcome & Announcements', type: 'item', length: 300, sequence: 5, position: 'during' },
-      { id: 'i6', title: 'Third Song', type: 'song', length: 330, sequence: 6, position: 'during', key: 'A' },
+      { id: 'i3', title: 'Opening Song', type: 'song', length: 270, sequence: 3, position: 'during', key: 'G', notes: [{ category: 'Lead', content: 'Alex' }] },
+      { id: 'i4', title: 'Second Song', type: 'song', length: 300, sequence: 4, position: 'during', key: 'D', notes: [{ category: 'Lead', content: 'Jordan' }] },
+      { id: 'i5', title: 'Welcome & Announcements', type: 'item', length: 300, sequence: 5, position: 'during', notes: [{ category: 'Lead', content: 'Drew' }] },
+      { id: 'i6', title: 'Third Song', type: 'song', length: 330, sequence: 6, position: 'during', key: 'A', notes: [{ category: 'Lead', content: 'Alex' }] },
       { id: 'i7', title: 'Message', type: 'header', length: 0, sequence: 7, position: 'during' },
-      { id: 'i8', title: 'Sermon', type: 'item', length: 2100, sequence: 8, position: 'during' },
-      { id: 'i9', title: 'Response Song', type: 'song', length: 300, sequence: 9, position: 'during', key: 'E' },
+      { id: 'i8', title: 'Sermon', type: 'item', length: 2100, sequence: 8, position: 'during', notes: [{ category: 'Lead', content: 'Pastor Pat' }] },
+      { id: 'i9', title: 'Response Song', type: 'song', length: 300, sequence: 9, position: 'during', key: 'E', notes: [{ category: 'Lead', content: 'Sam' }] },
       { id: 'i10', title: 'Dismissal', type: 'item', length: 120, sequence: 10, position: 'during' },
     ],
     members: PEOPLE.map(([personId, name, teamId, teamName, position, status]) => ({
-      personId, name, teamId, teamName, position, status, photo: null,
+      personId, name, teamId, teamName, position, status,
+      // A couple of photo URLs to exercise the avatar path; offline they fall back to initials.
+      photo: ['p1', 'p9'].includes(personId) ? `https://avatars.planningcenteronline.com/uploads/demo/${personId}.png` : null,
     })),
     fetchedAt: new Date().toISOString(),
   };
 }
 
 export function seedDevices() {
-  const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#ec407a'];
   const devices = [];
   for (let i = 1; i <= 8; i++) {
-    devices.push({ id: `m${i}`, type: 'mic', name: `HH ${i}`, channel: String(i), frequency: `${(518 + i * 1.375).toFixed(3)} MHz`, kind: 'Handheld', color: colors[i - 1], notes: '', active: true });
+    devices.push({ id: `m${i}`, type: 'mic', name: `HH ${i}`, channel: String(i), frequency: `${(518 + i * 1.375).toFixed(3)} MHz`, kind: 'Handheld', notes: '', active: true, linkedId: `e${i}` });
   }
-  devices.push({ id: 'm9', type: 'mic', name: 'Headset A', channel: '9', frequency: '531.250 MHz', kind: 'Headset', color: '#ffffff', notes: '', active: true });
-  devices.push({ id: 'm10', type: 'mic', name: 'Lav B', channel: '10', frequency: '533.000 MHz', kind: 'Lavalier', color: '#95a5a6', notes: '', active: true });
+  devices.push({ id: 'm9', type: 'mic', name: 'Headset A', channel: '9', frequency: '531.250 MHz', kind: 'Headset', notes: '', active: true, linkedId: null });
+  devices.push({ id: 'm10', type: 'mic', name: 'Lav B', channel: '10', frequency: '533.000 MHz', kind: 'Lavalier', notes: '', active: true, linkedId: null });
   for (let i = 1; i <= 8; i++) {
-    devices.push({ id: `e${i}`, type: 'iem', name: `IEM ${i}`, channel: `Mix ${i}`, frequency: `${(570 + i * 0.8).toFixed(3)} MHz`, kind: 'Wireless pack', color: colors[i - 1], notes: '', active: true });
+    devices.push({ id: `e${i}`, type: 'iem', name: `IEM ${i}`, channel: `Mix ${i}`, frequency: `${(570 + i * 0.8).toFixed(3)} MHz`, kind: 'Wireless pack', notes: '', active: true, linkedId: `m${i}` });
   }
   return devices;
 }

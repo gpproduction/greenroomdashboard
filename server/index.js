@@ -11,7 +11,7 @@ import * as pco from './pco.js';
 import * as sync from './sync.js';
 import * as pp from './propresenter.js';
 import * as demo from './demo.js';
-import { buildRoster } from './roster.js';
+import { buildRoster, assignmentChanges } from './roster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 8080);
@@ -36,12 +36,17 @@ function dashboardState() {
   const detail = sync.getActive();
   const roster = buildRoster(detail, db);
   const { display } = db.settings;
+  const leaderCats = String(db.settings.pco.leaderNoteCategories || '').split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
+  const items = (detail?.items || []).map(({ notes, ...item }) => ({
+    ...item,
+    leader: (notes || []).filter((n) => leaderCats.includes(String(n.category).toLowerCase())).map((n) => n.content.trim()).filter(Boolean).join(', ') || null,
+  }));
   return {
     bootId: BOOT_ID,
     generatedAt: new Date().toISOString(),
     display,
     showTimers: display.showTimers && (db.settings.propresenter.enabled || pco.isDemo()),
-    plan: detail ? { ...detail.plan, items: detail.items } : null,
+    plan: detail ? { ...detail.plan, items } : null,
     teams: roster.teams,
     conflicts: roster.conflicts,
     pco: sync.getStatus(),
@@ -134,20 +139,24 @@ admin.get('/plans/:serviceTypeId/:planId', async (req, res) => {
 
 admin.put('/plans/:planId/assignments/:key', (req, res) => {
   const { planId, key } = req.params;
-  const { field, deviceId, remember = true } = req.body || {};
+  const { field, deviceId, remember = true, linked = true } = req.body || {};
   if (!['mic', 'iem'].includes(field)) return res.status(400).json({ error: 'field must be mic or iem' });
   const value = deviceId || null;
+  const changes = assignmentChanges(store.get(), planId, key, field, value, { linked });
+
   store.update((db) => {
     db.assignments[planId] ??= {};
     db.assignments[planId][key] ??= {};
-    db.assignments[planId][key][field] = value;
+    Object.assign(db.assignments[planId][key], changes);
     if (remember && !key.startsWith('x:')) {
       db.defaults[key] ??= {};
-      if (value) db.defaults[key][field] = value;
-      else delete db.defaults[key][field];
+      for (const [f, v] of Object.entries(changes)) {
+        if (v) db.defaults[key][f] = v;
+        else delete db.defaults[key][f];
+      }
     }
   });
-  res.json({ ok: true });
+  res.json({ ok: true, changes });
 });
 
 admin.post('/plans/:planId/reset', (req, res) => {
@@ -172,7 +181,7 @@ admin.delete('/plans/:planId/extras/:key', (req, res) => {
 });
 
 // Devices
-const DEVICE_FIELDS = ['type', 'name', 'channel', 'frequency', 'kind', 'color', 'notes', 'active'];
+const DEVICE_FIELDS = ['type', 'name', 'channel', 'frequency', 'kind', 'notes', 'active'];
 function cleanDevice(body) {
   const d = {};
   for (const f of DEVICE_FIELDS) if (f in body) d[f] = typeof body[f] === 'string' ? body[f].slice(0, 120) : body[f];
@@ -181,7 +190,7 @@ function cleanDevice(body) {
 }
 admin.get('/devices', (req, res) => res.json(store.get().devices));
 admin.post('/devices', (req, res) => {
-  const d = { id: store.newId('d'), type: 'mic', name: 'New device', channel: '', frequency: '', kind: '', color: '#3498db', notes: '', active: true, ...cleanDevice(req.body || {}) };
+  const d = { id: store.newId('d'), type: 'mic', name: 'New device', channel: '', frequency: '', kind: '', notes: '', active: true, linkedId: null, ...cleanDevice(req.body || {}) };
   store.update((db) => { db.devices.push(d); });
   res.json(d);
 });
@@ -196,11 +205,40 @@ admin.put('/devices/:id', (req, res) => {
 admin.delete('/devices/:id', (req, res) => {
   store.update((db) => {
     db.devices = db.devices.filter((d) => d.id !== req.params.id);
+    for (const d of db.devices) if (d.linkedId === req.params.id) d.linkedId = null;
     for (const map of [db.defaults, ...Object.values(db.assignments)]) {
       for (const a of Object.values(map)) for (const f of ['mic', 'iem']) if (a[f] === req.params.id) a[f] = null;
     }
   });
   res.json({ ok: true });
+});
+// Pair a mic with an IEM (symmetric). linkedId null unlinks.
+function setLink(db, id, linkedId) {
+  const a = db.devices.find((d) => d.id === id);
+  if (!a) return false;
+  const b = linkedId ? db.devices.find((d) => d.id === linkedId) : null;
+  if (linkedId && (!b || b.type === a.type)) return false;
+  // Break any existing pairings either device was part of.
+  for (const d of db.devices) if (d.linkedId === a.id || (b && d.linkedId === b.id)) d.linkedId = null;
+  a.linkedId = b ? b.id : null;
+  if (b) b.linkedId = a.id;
+  return true;
+}
+admin.put('/devices/:id/link', (req, res) => {
+  let ok = false;
+  store.update((db) => { ok = setLink(db, req.params.id, req.body?.linkedId || null); });
+  ok ? res.json({ ok: true }) : res.status(400).json({ error: 'Can only link a mic to an IEM' });
+});
+// Pair Mic #1↔IEM #1, #2↔#2 … in list order.
+admin.post('/devices/auto-link', (req, res) => {
+  let n = 0;
+  store.update((db) => {
+    const mics = db.devices.filter((d) => d.type === 'mic');
+    const iems = db.devices.filter((d) => d.type === 'iem');
+    for (const d of db.devices) d.linkedId = null;
+    for (let i = 0; i < Math.min(mics.length, iems.length); i++) { setLink(db, mics[i].id, iems[i].id); n++; }
+  });
+  res.json({ ok: true, linked: n });
 });
 admin.put('/devices-order', (req, res) => {
   const ids = req.body?.ids || [];
