@@ -718,17 +718,39 @@
     // ProPresenter -------------------------------------------------------------------
     const ppResult = el('div', { class: 'help' });
     const timerBox = el('div', {});
+    // Timers to show: loaded from ProPresenter automatically when this page opens.
+    // Names are remembered so the choice is still visible when ProPresenter is off.
+    s.propresenter.timerNames ??= {};
     const drawTimers = (timers) => {
-      if (!timers?.length) { timerBox.replaceChildren(); return; }
+      const live = timers?.length ? timers : Object.entries(s.propresenter.timerNames).map(([id, name]) => ({ id, name, time: null }));
+      for (const t of timers || []) s.propresenter.timerNames[t.id] = t.name;
       timerBox.replaceChildren(
         el('h3', {}, 'Timers to show'),
-        el('div', { class: 'help' }, 'Leave all unticked to show every timer.'),
-        el('div', { class: 'checklist' }, timers.map((t) => el('label', { class: 'check' },
-          el('input', {
-            type: 'checkbox',
-            checked: s.propresenter.timerIds.includes(t.id),
-            onchange: (e) => { s.propresenter.timerIds = e.target.checked ? [...s.propresenter.timerIds, t.id] : s.propresenter.timerIds.filter((x) => x !== t.id); },
-          }), `${t.name}  (${t.time})`))));
+        el('p', { class: 'help' }, 'Applies to Backstage and Front of House. Leave all unticked to show every timer.'),
+        live.length
+          ? el('div', { class: 'checklist' }, live.map((t) => el('label', { class: 'check' },
+            el('input', {
+              type: 'checkbox',
+              checked: s.propresenter.timerIds.includes(t.id),
+              onchange: (e) => { s.propresenter.timerIds = e.target.checked ? [...s.propresenter.timerIds, t.id] : s.propresenter.timerIds.filter((x) => x !== t.id); },
+            }), t.time ? `${t.name}  (${t.time})` : t.name)))
+          : el('p', { class: 'muted' }, 'Connect to ProPresenter to see its timers.'),
+        !timers?.length && live.length ? el('p', { class: 'help' }, 'ProPresenter isn’t reachable right now — showing the timers it had last time.') : null,
+        live.length ? el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('propresenter') }, 'Save timer selection')) : null);
+    };
+    const testPP = async () => {
+      ppResult.textContent = 'Connecting to ProPresenter…';
+      ppResult.className = 'help';
+      try {
+        const r = await api('/api/admin/propresenter/test', { method: 'POST', body: { host: s.propresenter.host, port: s.propresenter.port } });
+        ppResult.textContent = `✓ Connected${r.version?.name ? ` to ${r.version.name}` : ''}${r.version?.host_description ? ` (${r.version.host_description})` : ''} — ${r.timers.length} timer(s) found`;
+        ppResult.className = 'help ok-text';
+        drawTimers(r.timers);
+      } catch (err) {
+        ppResult.textContent = err.message;
+        ppResult.className = 'help error';
+        drawTimers([]);
+      }
     };
     const ppSection = el('div', { class: 'section' },
       el('h2', {}, 'ProPresenter'),
@@ -739,25 +761,12 @@
         field('Port', el('input', { type: 'number', value: s.propresenter.port, oninput: (e) => { s.propresenter.port = Number(e.target.value); } }))),
       check('Highlight the item that is live in ProPresenter (matched by presentation name to the Planning Center item title)', s.propresenter, 'showActiveItem'),
       el('div', { class: 'row', style: 'margin-top:0.6rem' },
-        el('button', {
-          onclick: async () => {
-            ppResult.textContent = 'Testing…';
-            ppResult.className = 'help';
-            try {
-              const r = await api('/api/admin/propresenter/test', { method: 'POST', body: { host: s.propresenter.host, port: s.propresenter.port } });
-              ppResult.textContent = `✓ Connected${r.version?.name ? ` to ${r.version.name}` : ''}${r.version?.host_description ? ` (${r.version.host_description})` : ''} — ${r.timers.length} timer(s) found`;
-              ppResult.className = 'help ok-text';
-              drawTimers(r.timers);
-            } catch (err) {
-              ppResult.textContent = err.message;
-              ppResult.className = 'help error';
-            }
-          },
-        }, 'Test connection'),
+        el('button', { onclick: testPP }, 'Test connection'),
         el('button', { class: 'primary', onclick: () => saveSection('propresenter') }, 'Save ProPresenter settings')),
       ppResult,
       timerBox,
     );
+    if (s.propresenter.host || settings.demo) testPP(); else drawTimers([]);
 
     // Display ---------------------------------------------------------------------------
     const origin = location.origin;

@@ -31,6 +31,7 @@ function defaults() {
         host: '',
         port: 1025,
         timerIds: [], // timer uuids to show; empty = all
+        timerNames: {}, // uuid -> name, remembered so the choice is visible while ProPresenter is off
         showActiveItem: true,
       },
       display: {
