@@ -1,6 +1,6 @@
 {
   "name": "greenroom-dashboard",
-  "version": "0.14.1",
+  "version": "0.14.2",
   "private": true,
   "description": "GrowPoint Backstage — mic/IEM assignment and ProPresenter timer dashboard driven by Planning Center Services.",
   "type": "module",

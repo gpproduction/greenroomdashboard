@@ -353,60 +353,10 @@
         el('button', { class: 'primary', onclick: () => switchTab('devices') }, 'Add devices')));
       return;
     }
-    root.replaceChildren(header, conflictBox || '', ...blocks, guests, timingReport(data, reload), reset);
+    root.replaceChildren(header, conflictBox || '', ...blocks, guests, reset);
   }
 
-  // Planned vs actual item times for each service time (recorded from ProPresenter).
-  function timingReport(data, reload) {
-    const services = (data.plan.times || []).filter((t) => t.type === 'service');
-    const fmt = (secs) => {
-      if (!secs) return '';
-      secs = Math.round(secs);
-      const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
-      return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
-    };
-    const label = (t) => new Date(t.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: churchTz() });
-    const section = el('div', { class: 'section' },
-      el('h2', {}, 'Service timing'),
-      el('p', { class: 'help' }, 'Actual time spent on each item, recorded automatically while an item is live in ProPresenter during each service time (never during rehearsals).'));
-    if (!services.length) { section.append(el('p', { class: 'muted' }, 'This plan has no service times in Planning Center.')); return section; }
-    const items = data.items.filter((i) => i.type !== 'header');
-    // Main service only: pre/post-service items (countdown, walk-in) don't count toward the total.
-    const during = new Set(items.filter((i) => i.position === 'during').map((i) => i.id));
-    const known = new Set(items.map((i) => i.id));
-    const totals = services.map((t) => Object.entries(data.live[t.id]?.items || {}).reduce((a, [id, v]) => a + (during.has(id) || !known.has(id) ? v : 0), 0));
-    section.append(el('div', { class: 'table-wrap' }, el('table', { class: 'timing-table' },
-      el('thead', {}, el('tr', {},
-        el('th', {}, 'Item'), el('th', {}, 'Planned'),
-        services.map((t) => el('th', {}, label(t), data.live[t.id] ? el('button', {
-          class: 'small ghost danger',
-          title: 'Clear recorded times for this service',
-          onclick: async () => {
-            if (!confirm(`Clear the recorded times for the ${label(t)} service?`)) return;
-            await api(`/api/admin/plans/${data.plan.id}/live/${t.id}`, { method: 'DELETE' });
-            reload();
-          },
-        }, 'Clear') : null)))),
-      el('tbody', {},
-        items.map((i) => el('tr', {},
-          el('td', {}, i.title),
-          el('td', { class: 'num' }, fmt(i.length)),
-          services.map((t) => {
-            const secs = data.live[t.id]?.items?.[i.id];
-            const isLive = data.liveCurrent?.planTimeId === t.id && data.liveCurrent.itemId === i.id;
-            return el('td', { class: 'num' + (secs && i.length && secs > i.length ? ' over' : '') }, fmt(secs), isLive ? el('span', { class: 'badge live' }, 'LIVE') : null);
-          }))),
-        el('tr', { class: 'total' },
-          el('td', {}, 'Total'),
-          el('td', { class: 'num' }, fmt(items.filter((i) => i.position === 'during').reduce((a, i) => a + (i.length || 0), 0))),
-          totals.map((secs) => el('td', { class: 'num' }, fmt(secs))))))));
-    return section;
-  }
-
-  // ---- Live tab ----------------------------------------------------------------------
-  // Shows what ProPresenter has on screen, which plan item that matched, and the item
-  // timing as it happens. Production test mode records outside service times so the
-  // team can click through ProPresenter and check that timings work.
+  // ---- Live tab ---------------------------------------------------------------------------
   let livePoll = null;
   const fmtDur = (secs) => {
     secs = Math.max(0, Math.round(secs || 0));
@@ -427,7 +377,10 @@
         el('p', { class: 'help' }, 'Click through ProPresenter and watch item times update here and on Backstage, any time — not just during a service. Test times are saved separately and never mix with real service times. The dashboard shows a “TEST MODE” badge while it’s on, and it turns itself off when the time runs out. During a real service time, real recording always takes priority.'),
         controls),
       el('div', { class: 'section' }, el('h2', {}, 'Right now'), statusBox),
-      el('div', { class: 'section' }, el('h2', {}, 'Item times'), tableBox));
+      el('div', { class: 'section' },
+        el('h2', {}, 'Service timing'),
+        el('p', { class: 'help' }, 'Actual time on each item of the plan on Backstage, recorded while it’s live in ProPresenter during each service time (never rehearsals). Totals count the main service only; pre-service items like the countdown keep their own time. Past weeks are under History.'),
+        tableBox));
 
     let busy = false;
     async function refresh() {
@@ -460,16 +413,7 @@
               toast('Test mode on — click through ProPresenter');
               refresh();
             },
-          }, 'Start production test')),
-        d.testRecorded ? el('button', {
-          class: 'ghost danger',
-          onclick: async () => {
-            if (!confirm('Clear all test times for this plan?')) return;
-            await api(`/api/admin/plans/${d.plan.id}/live/test`, { method: 'DELETE' });
-            toast('Test times cleared');
-            refresh();
-          },
-        }, 'Clear test times') : null);
+          }, 'Start production test')));
 
       // Status
       const matched = d.items.find((i) => i.id === d.matchedItemId);
@@ -491,20 +435,48 @@
               : el('span', { class: 'muted' }, '—')),
         el('dt', {}, 'Timing'), el('dd', {}, mode)));
 
-      // Item times for whatever is being shown (test, current service, or last service)
-      const sum = d.summary;
-      const label = !sum?.planTimeId ? null : sum.test ? 'Test' : clock(sum.startsAt);
-      const running = (id) => (sum?.recording && sum.currentItemId === id ? (d.now - sum.currentStartedAt) / 1000 : 0);
-      tableBox.replaceChildren(!d.items.length ? el('p', { class: 'muted' }, 'No plan loaded.') : el('div', { class: 'table-wrap' }, el('table', { class: 'timing-table' },
-        el('thead', {}, el('tr', {}, el('th', {}, 'Item'), el('th', {}, 'Planned'), el('th', {}, label ? `Actual (${label})` : 'Actual'))),
-        el('tbody', {}, d.items.filter((i) => i.type !== 'header').map((i) => {
-          const secs = (sum?.actuals?.[i.id] || 0) + running(i.id);
-          const isLive = sum?.recording && sum.currentItemId === i.id;
-          return el('tr', { class: isLive ? 'live-row' : '' },
-            el('td', {}, i.title, isLive ? el('span', { class: 'badge ' + (sum.test ? 'test' : 'live') }, sum.test ? 'TEST' : 'LIVE') : null),
+      // Service timing: one column per service time (plus Test when there are test times).
+      const services = (d.plan?.times || []).filter((t) => t.type === 'service');
+      const cols = services.map((t) => ({ id: t.id, label: clock(t.startsAt), test: false }));
+      if (d.records.test || d.current?.planTimeId === 'test') cols.push({ id: 'test', label: 'Test', test: true });
+      const secsFor = (col, id) => (d.records[col.id]?.[id] || 0)
+        + (d.current?.planTimeId === col.id && d.current.itemId === id ? Math.max(0, (d.now - d.current.startedAt) / 1000) : 0);
+      const items = d.items.filter((i) => i.type !== 'header');
+      const known = new Set(items.map((i) => i.id));
+      const counts = (id) => !known.has(id) || items.find((i) => i.id === id).position === 'during';
+      const totalFor = (col) => {
+        const ids = new Set([...Object.keys(d.records[col.id] || {}), ...(d.current?.planTimeId === col.id ? [d.current.itemId] : [])]);
+        return [...ids].reduce((a, id) => a + (counts(id) ? secsFor(col, id) : 0), 0);
+      };
+      if (!items.length) { tableBox.replaceChildren(el('p', { class: 'muted' }, 'No plan loaded.')); return; }
+      if (!cols.length) { tableBox.replaceChildren(el('p', { class: 'muted' }, 'This plan has no service times in Planning Center.')); return; }
+      tableBox.replaceChildren(el('div', { class: 'table-wrap' }, el('table', { class: 'timing-table' },
+        el('thead', {}, el('tr', {},
+          el('th', {}, 'Item'), el('th', {}, 'Planned'),
+          cols.map((c) => el('th', {}, c.label, d.records[c.id] ? el('button', {
+            class: 'small ghost danger',
+            title: c.test ? 'Clear test times' : 'Clear recorded times for this service',
+            onclick: async () => {
+              if (!confirm(c.test ? 'Clear all test times for this plan?' : `Clear the recorded times for the ${c.label} service?`)) return;
+              await api(`/api/admin/plans/${d.plan.id}/live/${c.id}`, { method: 'DELETE' });
+              toast('Cleared');
+              refresh();
+            },
+          }, 'Clear') : null)))),
+        el('tbody', {},
+          items.map((i) => el('tr', { class: [d.current?.itemId === i.id ? 'live-row' : '', i.position !== 'during' ? 'prepost' : ''].join(' ') },
+            el('td', {}, i.title),
             el('td', { class: 'num' }, i.length ? fmtDur(i.length) : ''),
-            el('td', { class: 'num' + (i.length && secs > i.length ? ' over' : '') }, secs ? fmtDur(secs) : ''));
-        })))));
+            cols.map((c) => {
+              const secs = secsFor(c, i.id);
+              const isLive = d.current?.planTimeId === c.id && d.current.itemId === i.id;
+              return el('td', { class: 'num' + (i.length && secs > i.length ? ' over' : '') }, secs ? fmtDur(secs) : '',
+                isLive ? el('span', { class: 'badge ' + (c.test ? 'test' : 'live') }, c.test ? 'TEST' : 'LIVE') : null);
+            }))),
+          el('tr', { class: 'total' },
+            el('td', {}, 'Main service total'),
+            el('td', { class: 'num' }, fmtDur(items.filter((i) => i.position === 'during').reduce((a, i) => a + (i.length || 0), 0))),
+            cols.map((c) => { const t = totalFor(c); return el('td', { class: 'num' }, t ? fmtDur(t) : ''); }))))));
     }
 
     await refresh();

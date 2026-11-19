@@ -155,6 +155,7 @@ td.mismatch select { border-color: #e0b100; background: #fff7d1; color: #3d2f00;
 .timing-table .badge { margin-left: 0.4rem; }
 
 .badge.test { color: #8a5a00; border-color: #d99a1e; background: #fff4d6; font-weight: 700; }
+.timing-table tr.prepost td:first-child { color: var(--muted); font-style: italic; }
 .live-row td { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
 .warn-text { color: var(--warn); }
 .facts { display: grid; grid-template-columns: max-content 1fr; gap: 0.45rem 1.2rem; margin: 0; }

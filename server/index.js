@@ -318,6 +318,9 @@ admin.get('/live', (req, res) => {
     test: db.liveTest,
     summary: live.summary(detail, db, now),
     testRecorded: Boolean(detail && db.live[detail.plan.id]?.test),
+    // Every recorded service time (and test) for this plan, plus the running item.
+    records: detail ? Object.fromEntries(Object.entries(db.live[detail.plan.id] || {}).map(([tid, r]) => [tid, r.items || {}])) : {},
+    current: detail && db.liveCurrent?.planId === detail.plan.id ? db.liveCurrent : null,
   });
 });
 
