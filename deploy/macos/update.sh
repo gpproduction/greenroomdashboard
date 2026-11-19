@@ -1,5 +1,5 @@
 #!/bin/bash
-# Green Room — pull the latest version and restart the service.
+# GrowPoint Backstage — pull the latest version and restart the service.
 set -euo pipefail
 LABEL="church.growpoint.greenroom"
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

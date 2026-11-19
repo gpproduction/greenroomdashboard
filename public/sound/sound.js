@@ -1,4 +1,4 @@
-/* Sound desk: Open Sound Meter levels, Spotify now-playing + controls, order of service. */
+/* Front of House (sound desk): Open Sound Meter levels, Spotify now-playing + controls, order of service. */
 (() => {
   const $ = (id) => document.getElementById(id);
   let osm = null;
@@ -136,7 +136,7 @@
   $('sp-devices').addEventListener('focus', loadPickers);
 
   // ---- which tools to show ------------------------------------------------------------------
-  // Admin → Settings → Sound desk, or per computer with ?tools=level,order
+  // Admin → Settings → Front of House, or per computer with ?tools=level,order
   const urlTools = new URLSearchParams(location.search).get('tools');
   let appliedTools = '';
   function applyTools(list) {

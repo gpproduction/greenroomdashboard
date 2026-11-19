@@ -1,4 +1,4 @@
-# Sound desk page
+# Front of House (sound desk page)
 
 `http://192.168.1.100:8080/sound/` shows three things side by side:
 
@@ -29,18 +29,18 @@ To give one computer a different set, use a link such as `/sound/?tools=level,sp
 ## Open Sound Meter (v1.4.x)
 
 1. In **Open Sound Meter**, open the **Remote** panel from the sidebar and tick **Server**.
-2. In Green Room, go to **Admin → Settings → Open Sound Meter**:
+2. In Backstage, go to **Admin → Settings → Open Sound Meter**:
    - Tick **Listen for Open Sound Meter**.
-   - Optionally set the **measurement** name to show, e.g. `Measurement 1`. If you leave it blank, Green Room uses the first one it finds.
+   - Optionally set the **measurement** name to show, e.g. `Measurement 1`. If you leave it blank, Backstage uses the first one it finds.
    - Choose the weighting and speed: **A / Slow** for overall level, **C** if you care about low end.
    - Set **Amber at** and **Red at** (default 95 and 100 dB).
    - Click **Save**. Within a few seconds, the status line says *Receiving "…" from …*.
 
-**How it works:** Open Sound Meter announces itself and sends its levels over the local network on **UDP port 49007**, multicast group `239.255.42.42`. Green Room listens for these, so it needs no IP address. The number matches Open Sound Meter's own SPL readout (dBFS + 140, plus any offset you set). Leq is calculated by Green Room from one reading per second.
+**How it works:** Open Sound Meter announces itself and sends its levels over the local network on **UDP port 49007**, multicast group `239.255.42.42`. Backstage listens for these, so it needs no IP address. The number matches Open Sound Meter's own SPL readout (dBFS + 140, plus any offset you set). Leq is calculated by Backstage from one reading per second.
 
 **Requirements:**
 - The Mac running Open Sound Meter and the NAS must be on the **same network/VLAN**. Multicast doesn't cross routers.
-- On the NAS, Green Room must use **host networking**. That's the `network_mode: host` line in `deploy/synology/docker-compose.yml`.
+- On the NAS, Backstage must use **host networking**. That's the `network_mode: host` line in `deploy/synology/docker-compose.yml`.
 - If **"Waiting for Open Sound Meter…"** never changes:
   - Check that **Server** is ticked in Open Sound Meter.
   - Check the DSM firewall (allow UDP 49007).
@@ -54,16 +54,16 @@ To give one computer a different set, use a link such as `/sound/?tools=level,sp
 
 One-time setup, about 5 minutes, in **Admin → Settings → Spotify**:
 1. Go to <https://developer.spotify.com/dashboard>, sign in with the church's Spotify account, and click **Create app**:
-   - **Name:** anything, e.g. "Green Room".
+   - **Name:** anything, e.g. "Backstage".
    - **APIs:** tick **Web API**.
    - **Redirect URI:** `http://127.0.0.1:8888/callback`, typed exactly.
    - Save.
-2. Copy the app's **Client ID** into Green Room and click **Connect Spotify**. Sign in and click **Agree**.
-3. Your browser lands on a page that **won't load**. That's expected. Spotify only allows `http` return addresses on 127.0.0.1, and nothing runs there. Copy the **whole address** from the address bar, paste it into Green Room, and click **Finish**.
+2. Copy the app's **Client ID** into Backstage and click **Connect Spotify**. Sign in and click **Agree**.
+3. Your browser lands on a page that **won't load**. That's expected. Spotify only allows `http` return addresses on 127.0.0.1, and nothing runs there. Copy the **whole address** from the address bar, paste it into Backstage, and click **Finish**.
 
-Green Room keeps itself signed in from then on.
+Backstage keeps itself signed in from then on.
 
 **Using the controls:**
-- To use ⏮ ⏯ ⏭, volume, playlists and devices, the sound desk computer must be **signed in to Green Room admin** in that same browser or app. Anyone else can watch the page, but only signed-in users can control playback.
+- To use ⏮ ⏯ ⏭, volume, playlists and devices, the sound desk computer must be **signed in to Backstage admin** in that same browser or app. Anyone else can watch the page, but only signed-in users can control playback.
 - Spotify controls whichever device is **active**: the Spotify app on the sound desk Mac, a speaker, and so on. If it says "No Spotify device is active", open Spotify on the sound desk Mac, or pick a device in **Play on…**.
 - To start the pre-service music, choose your **Pre-Service** playlist and click **Play**.

@@ -1,4 +1,4 @@
-# Green Room Dashboard
+# GrowPoint Backstage
 
 A self-hosted mic and in-ear-monitor assignment board for church production teams.
 
@@ -9,7 +9,7 @@ A self-hosted mic and in-ear-monitor assignment board for church production team
 - **ProPresenter 7**: shows live timers and highlights the item that's currently on screen.
 - **Live item timing** (like Services LIVE): when an item goes live in ProPresenter, the dashboard counts how long you've been on it (planned vs actual, plus a running service total). Actual times are saved per service time, and only during Planning Center *service* times, never rehearsals. Admin → Assign shows a planned-vs-actual report. Try it with `DEMO=1 DEMO_LIVE=1 npm start`.
 - **HyperDeck & OBS**: the dashboard footer shows HyperDeck record status and timecode (Ethernet control, port 9993) and OBS stream and record time (OBS WebSocket server, port 4455), next to the connection icons.
-- **Sound desk page** (`/sound/`): live SPL and Leq from Open Sound Meter, Spotify now-playing and controls, and the order of service. See [docs/SOUND-DESK.md](docs/SOUND-DESK.md).
+- **Front of House** (`/foh` or `/sound/`): live SPL and Leq from Open Sound Meter, Spotify now-playing and controls, and the order of service. See [docs/SOUND-DESK.md](docs/SOUND-DESK.md).
 - **UniFi Access arrivals**: people who badged in today get a green "Arrived" (with the time) on the dashboard. Door unlocks come from the UniFi Access API (port 12445) and are matched to Planning Center names.
 - **Production test mode** (Admin → Live): click through ProPresenter outside service times to check item timing. It's recorded separately from real services.
 - **Announcements**: the description from Planning Center is shown under announcement items (configurable).
@@ -19,7 +19,7 @@ A self-hosted mic and in-ear-monitor assignment board for church production team
  Planning Center (cloud) ──HTTPS──┐
                                    ▼
                      ┌──────────────────────────┐        ┌──────────────┐
- ProPresenter ◀─LAN──│  Green Room server (Node) │──WS──▶ │ Chrome on TV │
+ ProPresenter ◀─LAN──│  Backstage server (Node) │──WS──▶ │ Chrome on TV │
    (timers)          │  /admin   /dashboard      │        └──────────────┘
                      └──────────────────────────┘
 ```
@@ -92,7 +92,7 @@ The dashboard lives at `http://<server-ip>:8080/dashboard/`. These URL options c
 
 ### Saving it as a desktop app
 
-Green Room has app icons and names, so Chrome can open it in its own window, with a Dock or taskbar icon and no address bar:
+Backstage has app icons and names, so Chrome can open it in its own window, with a Dock or taskbar icon and no address bar:
 
 1. Open `http://<server-ip>:8080/dashboard/`, or `/admin/` for the admin app.
 2. In Chrome, open the **⋮ menu** and choose **Cast, save, and share**. Then choose **Install page as app…** or, on older Chrome, **Create shortcut…** and tick **Open as window**.
@@ -158,5 +158,5 @@ public/
 
 - The dashboard is read-only and open to anyone on the network. Everything under `/api/admin` requires the admin password.
 - The Planning Center secret is stored in `data/db.json`, or comes from `PCO_SECRET` in the environment. Keep the server on a trusted network.
-- Green Room is meant for the church network only. Don't forward port 8080 on the router.
+- Backstage is meant for the church network only. Don't forward port 8080 on the router.
 - Admin logins persist across restarts (stored hashed in `data/db.json`). Changing the admin password signs out every other device.

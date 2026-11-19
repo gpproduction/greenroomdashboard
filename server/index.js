@@ -123,6 +123,11 @@ app.delete('/api/admin/logo', auth.requireAdmin, (req, res) => {
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/', (req, res) => res.redirect('/dashboard/'));
+// Friendly names: /backstage → the green room screen, /foh → Front of House (sound desk).
+// The original /dashboard/ and /sound/ links keep working.
+const keepQuery = (req) => (req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '');
+app.get(['/backstage', '/backstage/'], (req, res) => res.redirect(`/dashboard/${keepQuery(req)}`));
+app.get(['/foh', '/foh/'], (req, res) => res.redirect(`/sound/${keepQuery(req)}`));
 app.use(express.static(path.join(__dirname, '..', 'public'), { extensions: ['html'] }));
 
 auth.routes(app);
@@ -527,7 +532,7 @@ unifi.events.on('change', scheduleStateBroadcast);
 
 // --- start -------------------------------------------------------------------------
 server.listen(PORT, HOST, () => {
-  console.log(`Green Room Dashboard on http://localhost:${PORT}  (dashboard: /dashboard  admin: /admin)${pco.isDemo() ? '  [DEMO MODE]' : ''}`);
+  console.log(`GrowPoint Backstage on http://localhost:${PORT}  (Backstage: /dashboard  Front of House: /sound  admin: /admin)${pco.isDemo() ? '  [DEMO MODE]' : ''}`);
   sync.start();
   pp.start();
   live.start();

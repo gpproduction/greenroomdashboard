@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Green Room Admin</title>
+  <title>Backstage Admin</title>
   <link rel="stylesheet" href="/admin/admin.css">
   <link rel="manifest" href="/admin/app.webmanifest">
   <link rel="icon" type="image/png" href="/icons/favicon.png">
@@ -13,7 +13,7 @@
 <body>
   <div id="login" class="login hidden">
     <form id="login-form" class="card">
-      <h1>Green Room Admin</h1>
+      <h1>Backstage Admin</h1>
       <p id="login-hint" class="muted"></p>
       <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" required>
       <input type="password" id="login-confirm" class="hidden" placeholder="Confirm password" autocomplete="new-password">
@@ -24,7 +24,7 @@
 
   <div id="app" class="hidden">
     <header class="bar">
-      <div class="logo">Green Room <span class="version" id="version"></span></div>
+      <div class="logo">Backstage <span class="version" id="version"></span></div>
       <nav id="tabs">
         <button data-tab="assign" class="active">Assign</button>
         <button data-tab="devices">Devices</button>
@@ -32,8 +32,8 @@
         <button data-tab="settings">Settings</button>
       </nav>
       <div class="right">
-        <a href="/dashboard/" target="_blank" class="btn">Open dashboard ↗</a>
-        <a href="/sound/" target="_blank" class="btn">Sound desk ↗</a>
+        <a href="/backstage" target="_blank" class="btn">Backstage ↗</a>
+        <a href="/foh" target="_blank" class="btn">Front of House ↗</a>
         <button id="logout" class="ghost">Sign out</button>
       </div>
     </header>

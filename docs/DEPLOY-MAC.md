@@ -1,18 +1,18 @@
-# Installing Green Room on the church Mac
+# Installing GrowPoint Backstage on the church Mac
 
-This guide sets up Green Room on a Mac at church. Everything runs on the church network, which ProPresenter requires:
+This guide sets up Backstage on a Mac at church. Everything runs on the church network, which ProPresenter requires:
 
 ```
   ┌──────────────────── church network ─────────────────────┐
   │                                                          │
   │  Greenroom TV ──┐                                        │
-  │  Admin laptop ──┼──http──▶  Green Room Mac ──▶ ProPresenter Mac (timers)
+  │  Admin laptop ──┼──http──▶  Backstage Mac ──▶ ProPresenter Mac (timers)
   │  Phone on Wi-Fi ┘                │                       │
   └──────────────────────────────────┼───────────────────────┘
                                      └──HTTPS──▶ Planning Center (internet)
 ```
 
-Any computer, tablet or phone **on the church network** (including church Wi-Fi) can open the dashboard and admin. Green Room isn't reachable from outside the building.
+Any computer, tablet or phone **on the church network** (including church Wi-Fi) can open the dashboard and admin. Backstage isn't reachable from outside the building.
 
 Allow about 45 minutes the first time.
 
@@ -25,7 +25,7 @@ Use any Mac that can stay on all the time, such as a Mac mini. It can be the Pro
 1. **Always on.** The installer offers to set this up for you (step 2). To do it by hand: System Settings → Energy, turn on *Prevent automatic sleeping* and *Start up automatically after a power failure*.
 2. **Fixed address.** Ask whoever manages the church router to give this Mac a **DHCP reservation**, so its IP address never changes. The TVs and ProPresenter settings depend on that address.
 3. **Install Node.js.** Download the **LTS** installer from <https://nodejs.org> and run it.
-4. **Install git** so you can download and update Green Room. Open Terminal and run:
+4. **Install git** so you can download and update Backstage. Open Terminal and run:
 
    ```bash
    xcode-select --install
@@ -33,7 +33,7 @@ Use any Mac that can stay on all the time, such as a Mac mini. It can be the Pro
 
    Click *Install* in the window that appears.
 
-## 2. Install Green Room
+## 2. Install Backstage
 
 In Terminal, run these commands. They put the app in your home folder. **Don't** use Documents, Desktop or Downloads, because macOS blocks background services from those folders.
 
@@ -49,7 +49,7 @@ git clone -b claude/brave-feynman-7mpjir https://github.com/gpproduction/greenro
 
 The installer:
 - installs what the app needs;
-- sets Green Room up as a **background service** that starts at boot, with no login needed;
+- sets Backstage up as a **background service** that starts at boot, with no login needed;
 - restarts it if it ever crashes;
 - offers to set the power options from step 1.
 
@@ -75,7 +75,7 @@ Open the Admin link from the installer, e.g. `http://192.168.1.20:8080/admin`.
 
 ## 4. Greenroom TVs (inside the building)
 
-Point each TV's computer at the Green Room Mac's address:
+Point each TV's computer at the Backstage Mac's address:
 
 ```
 http://<green-room-mac-ip>:8080/dashboard/
@@ -103,5 +103,5 @@ To run it full screen and start automatically, use the Chrome kiosk commands in 
   - Make sure ProPresenter is open and *Enable Network* is ticked.
   - Check that the IP address hasn't changed. A DHCP reservation for the ProPresenter Mac fixes that for good.
   - Check that both Macs are on the same network.
-- **A TV or phone can't load the page**: make sure it's on the church network (not cellular or guest Wi-Fi that's isolated from other devices), and that the Green Room Mac is on. Check `http://localhost:8080/api/health` on the Mac itself.
+- **A TV or phone can't load the page**: make sure it's on the church network (not cellular or guest Wi-Fi that's isolated from other devices), and that the Backstage Mac is on. Check `http://localhost:8080/api/health` on the Mac itself.
 - **The installer says it can't run from Documents/Desktop**: move the folder to your home folder (`mv ~/Documents/greenroom ~/greenroom`) and run the installer again.

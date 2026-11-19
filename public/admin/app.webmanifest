@@ -1,8 +1,8 @@
 {
   "id": "/admin/",
-  "name": "Green Room Admin",
-  "short_name": "GR Admin",
-  "description": "Assign mics and IEMs, run production tests and manage Green Room settings.",
+  "name": "Backstage Admin",
+  "short_name": "Admin",
+  "description": "Assign mics and IEMs, run production tests and manage GrowPoint Backstage.",
   "start_url": "/admin/",
   "scope": "/admin/",
   "display": "standalone",

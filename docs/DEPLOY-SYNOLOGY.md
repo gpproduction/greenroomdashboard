@@ -1,6 +1,6 @@
-# Installing Green Room on a Synology NAS
+# Installing GrowPoint Backstage on a Synology NAS
 
-A Synology NAS is a good home for Green Room. It's always on, it's on the church network next to ProPresenter, and it backs itself up. Green Room runs in **Container Manager**, Synology's built-in tool for running Docker containers. You don't need a Mac, Xcode or Terminal.
+A Synology NAS is a good home for Backstage. It's always on, it's on the church network next to ProPresenter, and it backs itself up. Backstage runs in **Container Manager**, Synology's built-in tool for running Docker containers. You don't need a Mac, Xcode or Terminal.
 
 ```
   ┌──────────────────── church network ─────────────────────┐
@@ -23,7 +23,7 @@ Allow about 20 minutes.
    - go to *Control Panel → Network → Network Interface → Edit* and set a manual IP, or
    - ask whoever runs the router for a DHCP reservation.
 
-## 2. Copy Green Room to the NAS
+## 2. Copy Backstage to the NAS
 
 1. Download the code as a ZIP. On a computer signed in to GitHub, open:
    `https://github.com/gpproduction/greenroomdashboard/archive/refs/heads/claude/brave-feynman-7mpjir.zip`
@@ -41,7 +41,7 @@ Allow about 20 minutes.
    - **Source:** *Use existing docker-compose.yml*
 3. Click **Next**. If it offers a Web Station portal, skip it. Then click **Done**.
 
-The NAS builds Green Room the first time, which takes a few minutes, and then starts it. In **Container**, `greenroom-dashboard` should show as running (healthy). It restarts by itself after a reboot or a power cut.
+The NAS builds Backstage the first time, which takes a few minutes, and then starts it. In **Container**, `greenroom-dashboard` should show as running (healthy). It restarts by itself after a reboot or a power cut.
 
 > **Port 8080 already in use?** Edit `docker-compose.yml` in File Station: change `"8080:8080"` to, for example, `"8090:8080"`, then use 8090 in the addresses below.
 >

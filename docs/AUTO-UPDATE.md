@@ -3,7 +3,7 @@
 Once this is set up, you never upload files again. It works like this:
 
 1. A change is pushed to GitHub.
-2. **GitHub Actions** runs the tests, builds Green Room, and publishes it to GitHub's container registry (`ghcr.io/gpproduction/greenroomdashboard`). This takes about 3 minutes.
+2. **GitHub Actions** runs the tests, builds Backstage, and publishes it to GitHub's container registry (`ghcr.io/gpproduction/greenroomdashboard`). This takes about 3 minutes.
 3. On the NAS, a small **updater** container (Watchtower) checks for a new version every 15 minutes, **Monday–Saturday, 1 AM–5 PM**. It never runs during Sunday services or evening rehearsals.
 4. When it finds one, it swaps in the new version within a few seconds. Open dashboards reload themselves.
 
@@ -58,7 +58,7 @@ The updater installs new **app** versions, but it doesn't change the project's Y
 2. Click **Edit** (or *YAML configurations*), paste the new [`deploy/synology/docker-compose.yml`](../deploy/synology/docker-compose.yml), and save.
 3. Click **Action → Build**, then **Start**.
 
-For example, v0.9.0 switches Green Room to `network_mode: host` so it can hear Open Sound Meter.
+For example, v0.9.0 switches Backstage to `network_mode: host` so it can hear Open Sound Meter.
 
 ## Troubleshooting
 

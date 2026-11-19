@@ -1,8 +1,8 @@
 {
   "id": "/dashboard/",
-  "name": "Green Room",
-  "short_name": "Green Room",
-  "description": "GrowPoint green room dashboard — mics, IEMs, order of service and timers.",
+  "name": "Backstage",
+  "short_name": "Backstage",
+  "description": "GrowPoint Backstage — mics, IEMs, order of service and timers.",
   "start_url": "/dashboard/",
   "scope": "/dashboard/",
   "display": "standalone",

@@ -1,4 +1,4 @@
-/* Green Room admin — assignments, device inventory, integrations. */
+/* GrowPoint Backstage admin — assignments, device inventory, integrations. */
 (() => {
   const $ = (id) => document.getElementById(id);
 
@@ -152,7 +152,7 @@
         loadPlan();
       },
     }, plans.map((p) => el('option', { value: p.id, selected: p.id === selectedPlan.id },
-      `${p.dates} — ${p.serviceTypeName}${p.title ? ` — ${p.title}` : p.seriesTitle ? ` — ${p.seriesTitle}` : ''}${p.id === activeId ? '  (on dashboard)' : ''}`)));
+      `${p.dates} — ${p.serviceTypeName}${p.title ? ` — ${p.title}` : p.seriesTitle ? ` — ${p.seriesTitle}` : ''}${p.id === activeId ? '  (on Backstage)' : ''}`)));
 
     const planBody = el('div', { id: 'plan-body' });
     root.replaceChildren(
@@ -215,10 +215,10 @@
     const header = el('div', { class: 'section' },
       el('div', { class: 'row' },
         el('h2', { style: 'margin:0' }, `${plan.dates}${plan.title ? ` · ${plan.title}` : ''}`),
-        plan.id === activeId ? el('span', { class: 'badge live' }, 'Showing on dashboard') : el('span', { class: 'badge' }, 'Not on dashboard'),
+        plan.id === activeId ? el('span', { class: 'badge live' }, 'Showing on Backstage') : el('span', { class: 'badge' }, 'Not on Backstage'),
         el('a', { href: plan.url, target: '_blank', rel: 'noopener' }, 'Open in Planning Center ↗'),
       ),
-      el('p', { class: 'help' }, 'Assignments save instantly and appear on the dashboard within a second. “Show” puts someone on the dashboard even without a device (Worship Team is on by default); anyone with a device always shows. Picking a mic also picks its linked IEM; you can still change the IEM on its own. Choices are remembered for future plans (marked “auto”).'),
+      el('p', { class: 'help' }, 'Assignments save instantly and appear on Backstage within a second. “Show” puts someone on Backstage even without a device (Worship Team is on by default); anyone with a device always shows. Picking a mic also picks its linked IEM; you can still change the IEM on its own. Choices are remembered for future plans (marked “auto”).'),
       meta?.times?.length ? el('p', { class: 'help' }, meta.times.map((t) => `${t.name || (t.type === 'service' ? 'Service' : t.type)} ${new Date(t.startsAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: churchTz() })}`).join(' · ')) : null,
     );
 
@@ -253,11 +253,11 @@
           type: 'checkbox',
           checked: m.shown,
           disabled: m.hasDevice,
-          title: m.hasDevice ? 'Shown because they have a device assigned' : 'Show this person on the dashboard even without a device',
+          title: m.hasDevice ? 'Shown because they have a device assigned' : 'Show this person on Backstage even without a device',
           onchange: async (e) => {
             try {
               await api('/api/admin/visibility', { method: 'PUT', body: { teamId: team.id, key: m.key, show: e.target.checked } });
-              toast(`${m.name} ${e.target.checked ? 'will show' : 'hidden'} on the dashboard`);
+              toast(`${m.name} ${e.target.checked ? 'will show' : 'hidden'} on Backstage`);
               reload();
             } catch (err) { toast(err.message, true); }
           },
@@ -279,9 +279,9 @@
           cell('other'));
       });
       return el('div', { class: 'section team-block' + (team.inFilter ? '' : ' dim') },
-        el('div', { class: 'team-head' }, el('h3', {}, team.name), team.inFilter ? null : el('span', { class: 'badge' }, 'hidden on dashboard')),
+        el('div', { class: 'team-head' }, el('h3', {}, team.name), team.inFilter ? null : el('span', { class: 'badge' }, 'hidden on Backstage')),
         el('div', { class: 'table-wrap' }, el('table', { class: 'assign-table' },
-          el('thead', {}, el('tr', {}, el('th', { title: 'Show on dashboard' }, 'Show'), el('th', { style: 'width:34%' }, 'Person'), el('th', {}, 'Mic'), el('th', {}, 'IEM'), el('th', {}, 'Other'))),
+          el('thead', {}, el('tr', {}, el('th', { title: 'Show on Backstage' }, 'Show'), el('th', { style: 'width:34%' }, 'Person'), el('th', {}, 'Mic'), el('th', {}, 'IEM'), el('th', {}, 'Other'))),
           el('tbody', {}, rows))));
     });
 
@@ -385,7 +385,7 @@
     root.replaceChildren(
       el('div', { class: 'section' },
         el('h2', {}, 'Production test'),
-        el('p', { class: 'help' }, 'Click through ProPresenter and watch item times update here and on the dashboard, any time — not just during a service. Test times are saved separately and never mix with real service times. The dashboard shows a “TEST MODE” badge while it’s on, and it turns itself off when the time runs out. During a real service time, real recording always takes priority.'),
+        el('p', { class: 'help' }, 'Click through ProPresenter and watch item times update here and on Backstage, any time — not just during a service. Test times are saved separately and never mix with real service times. The dashboard shows a “TEST MODE” badge while it’s on, and it turns itself off when the time runs out. During a real service time, real recording always takes priority.'),
         controls),
       el('div', { class: 'section' }, el('h2', {}, 'Right now'), statusBox),
       el('div', { class: 'section' }, el('h2', {}, 'Item times'), tableBox));
@@ -443,7 +443,7 @@
         ? `Recording the ${clock(d.window.start)} service`
         : testOn ? 'Recording test times' : 'Not recording (outside service times — start a production test to try it)';
       statusBox.replaceChildren(el('dl', { class: 'facts' },
-        el('dt', {}, 'Plan on dashboard'), el('dd', {}, d.plan ? `${d.plan.dates} · ${d.plan.serviceTypeName || ''}` : 'None'),
+        el('dt', {}, 'Plan on Backstage'), el('dd', {}, d.plan ? `${d.plan.dates} · ${d.plan.serviceTypeName || ''}` : 'None'),
         el('dt', {}, 'ProPresenter'), el('dd', {}, ppLine),
         el('dt', {}, 'On screen now'), el('dd', {}, d.propresenter.activePresentation || el('span', { class: 'muted' }, 'Nothing')),
         el('dt', {}, 'Matched item'), el('dd', {},
@@ -620,7 +620,7 @@
           const chosen = s.pco.teamIds.map((id) => byId.get(id));
           const rest = teams.filter((t) => !s.pco.teamIds.includes(t.id));
           teamBox.replaceChildren(
-            el('div', { class: 'help' }, 'Ticked teams appear on the dashboard in this order. Leave all unticked to show every team. “Show everyone” puts all of that team’s scheduled people on the dashboard even without a device (you can still turn people off one by one on the Assign page). People with a device always show.'),
+            el('div', { class: 'help' }, 'Ticked teams appear on Backstage in this order. Leave all unticked to show every team. “Show everyone” puts all of that team’s scheduled people on Backstage even without a device (you can still turn people off one by one on the Assign page). People with a device always show.'),
             ...chosen.map((t, i) => el('div', { class: 'check' },
               el('input', { type: 'checkbox', checked: true, onchange: () => { s.pco.teamIds = s.pco.teamIds.filter((x) => x !== t.id); draw(); } }),
               el('span', { style: 'flex:1' }, t.name),
@@ -703,7 +703,7 @@
         }, 'Test & connect'),
         pcoResult),
       el('h3', {}, 'Service types to pull plans from'), stBox,
-      el('h3', {}, 'Teams on the dashboard'), teamBox,
+      el('h3', {}, 'Teams on Backstage'), teamBox,
       el('h3', {}, 'Which plan is shown'),
       el('div', { class: 'grid2' },
         field('Plan', planSel, 'Automatic switches to the next plan two hours after the last service ends.'),
@@ -796,10 +796,10 @@
               toast('Using the default GrowPoint logo');
             },
           }, 'Reset to GrowPoint logo')),
-        el('div', { class: 'help' }, 'The dashboard is dark, so use a white or light logo on a transparent background (PNG or SVG).'),
+        el('div', { class: 'help' }, 'Backstage is dark, so use a white or light logo on a transparent background (PNG or SVG).'),
         logoInput));
     const displaySection = el('div', { class: 'section' },
-      el('h2', {}, 'Dashboard'),
+      el('h2', {}, 'Backstage screen'),
       el('p', { class: 'help' }, 'The header greets the room with “Good Morning”, “Good Afternoon” or “Good Evening” based on the time zone below.'),
       logoBox,
       check('Show the logo', s.display, 'showLogo'),
@@ -816,7 +816,8 @@
       el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('display') }, 'Save display settings')),
       el('h3', {}, 'Dashboard links'),
       el('ul', { class: 'help' },
-        el('li', {}, el('code', {}, `${origin}/dashboard/`), ' — everything'),
+        el('li', {}, el('code', {}, `${origin}/backstage`), ' — Backstage, everything (same as /dashboard/)'),
+        el('li', {}, el('code', {}, `${origin}/foh`), ' — Front of House (same as /sound/)'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=timers`), ' — big timers only (stage/greenroom clock)'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=roster`), ' — mic/IEM list only'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=order`), ' — order of service only'),
@@ -855,7 +856,7 @@
     const hdResult = el('div', { class: 'help' });
     const hdSection = el('div', { class: 'section' },
       el('h2', {}, 'HyperDeck'),
-      el('p', { class: 'help' }, 'Shows the HyperDeck’s record status and timecode along the bottom of the dashboard. On the HyperDeck, make sure Ethernet/remote control is enabled and note its IP address (shown on its front-panel Setup menu or in Blackmagic HyperDeck Setup).'),
+      el('p', { class: 'help' }, 'Shows the HyperDeck’s record status and timecode along the bottom of Backstage and Front of House. On the HyperDeck, make sure Ethernet/remote control is enabled and note its IP address (shown on its front-panel Setup menu or in Blackmagic HyperDeck Setup).'),
       check('Connect to HyperDeck', s.hyperdeck, 'enabled'),
       el('div', { class: 'grid2' },
         field('IP address', el('input', { value: s.hyperdeck.host, placeholder: '192.168.1.60', oninput: (e) => { s.hyperdeck.host = e.target.value.trim(); } })),
@@ -869,7 +870,7 @@
     const obsResult = el('div', { class: 'help' });
     const obsSection = el('div', { class: 'section' },
       el('h2', {}, 'OBS'),
-      el('p', { class: 'help' }, 'Shows OBS stream and recording time along the bottom of the dashboard. In OBS open Tools → WebSocket Server Settings, tick “Enable WebSocket server”, and use “Show Connect Info” for the IP, port and password.'),
+      el('p', { class: 'help' }, 'Shows OBS stream and recording time along the bottom of Backstage and Front of House. In OBS open Tools → WebSocket Server Settings, tick “Enable WebSocket server”, and use “Show Connect Info” for the IP, port and password.'),
       check('Connect to OBS', s.obs, 'enabled'),
       el('div', { class: 'grid2' },
         field('IP address', el('input', { value: s.obs.host, placeholder: '192.168.1.70', oninput: (e) => { s.obs.host = e.target.value.trim(); } })),
@@ -885,7 +886,7 @@
     const unifiResult = el('div', { class: 'help' });
     const unifiSection = el('div', { class: 'section' },
       el('h2', {}, 'UniFi Access (arrivals)'),
-      el('p', { class: 'help' }, 'Shows a green “Arrived” next to people on the dashboard once they badge in today. People are matched by name, so their UniFi Access name needs to match their Planning Center name (nicknames like Mackenzie “Kenzie” Smith also match “Kenzie Smith”).'),
+      el('p', { class: 'help' }, 'Shows a green “Arrived” next to people on Backstage once they badge in today. People are matched by name, so their UniFi Access name needs to match their Planning Center name (nicknames like Mackenzie “Kenzie” Smith also match “Kenzie Smith”).'),
       el('p', { class: 'help' }, 'Create the token in UniFi Access → Settings → General → Advanced → API Token, with permission to view system logs. The console must be reachable from the NAS on port 12445.'),
       check('Connect to UniFi Access', s.unifi, 'enabled'),
       el('div', { class: 'grid2' },
@@ -904,7 +905,7 @@
               unifiResult.replaceChildren(
                 el('div', { class: 'ok-text' }, `✓ Connected — ${r.events} door event(s) today. ${r.matched.length} person(s) on this week's plan badged in today${r.matched.length ? `: ${r.matched.join(', ')}` : ''}.`),
                 el('div', { class: 'help' }, r.windowStart
-                  ? `Arrivals on the dashboard count from ${new Date(r.windowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: churchTz() })} today.`
+                  ? `Arrivals on Backstage count from ${new Date(r.windowStart).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: churchTz() })} today.`
                   : 'No arrivals are shown right now: there is no rehearsal or service time today, or it is still more than the lead time before the first one.'),
                 r.recent.length ? el('table', { style: 'margin-top:0.5rem' },
                   el('thead', {}, el('tr', {}, ['Name in UniFi', 'Time', 'Door', 'Result', 'Matches plan'].map((h) => el('th', {}, h)))),
@@ -926,7 +927,7 @@
     // Live item timing -----------------------------------------------------------------
     const liveSection = el('div', { class: 'section' },
       el('h2', {}, 'Live item timing'),
-      el('p', { class: 'help' }, 'Like Services LIVE: when an order-of-service item goes live in ProPresenter, the dashboard starts counting how long you have been on it, and the actual time is saved for each service time. It only records during Planning Center service times, never rehearsals. An item stays live until the next one starts.'),
+      el('p', { class: 'help' }, 'Like Services LIVE: when an order-of-service item goes live in ProPresenter, Backstage starts counting how long you have been on it, and the actual time is saved for each service time. It only records during Planning Center service times, never rehearsals. An item stays live until the next one starts.'),
       check('Record actual item times', s.live, 'enabled'),
       el('div', { class: 'grid2' },
         field('Start recording before each service (minutes)', el('input', { type: 'number', min: 0, max: 120, value: s.live.preRollMinutes, oninput: (e) => { s.live.preRollMinutes = Number(e.target.value); } }), 'Covers pre-service items like the countdown.'),
@@ -939,8 +940,8 @@
       options.map(([v, t]) => el('option', { value: v, selected: String(obj[key]) === v }, t)));
     const num = (obj, key, attrs = {}) => el('input', { type: 'number', value: obj[key], ...attrs, oninput: (e) => { obj[key] = Number(e.target.value); } });
     const osmSection = el('div', { class: 'section' },
-      el('h2', {}, 'Open Sound Meter (sound desk level)'),
-      el('p', { class: 'help' }, 'Shows the live SPL from Open Sound Meter on the sound desk page (/sound/). In Open Sound Meter, open the Remote panel (sidebar) and tick “Server”. The OSM computer must be on the same network as the NAS; no IP address is needed — Green Room listens for it.'),
+      el('h2', {}, 'Open Sound Meter'),
+      el('p', { class: 'help' }, 'Shows the live SPL from Open Sound Meter on Front of House (/sound/). In Open Sound Meter, open the Remote panel (sidebar) and tick “Server”. The OSM computer must be on the same network as the NAS; no IP address is needed — Backstage listens for it.'),
       check('Listen for Open Sound Meter', s.osm, 'enabled'),
       el('div', { class: 'grid2' },
         field('Measurement to show', el('input', { value: s.osm.source, placeholder: 'Blank = the first one found', oninput: (e) => { s.osm.source = e.target.value; } }), 'The measurement’s name in Open Sound Meter, e.g. “Measurement 1”.'),
@@ -949,7 +950,7 @@
         field('Leq window (minutes)', num(s.osm, 'leqMinutes', { min: 1, max: 60 })),
         field('Amber at (dB)', num(s.osm, 'warn', { min: 40, max: 130 })),
         field('Red at (dB)', num(s.osm, 'alarm', { min: 40, max: 130 })),
-        field('Calibration offset (dB)', num(s.osm, 'offset', { step: 0.1 }), 'Normally 0 — Green Room already matches OSM’s SPL readout.')),
+        field('Calibration offset (dB)', num(s.osm, 'offset', { step: 0.1 }), 'Normally 0 — Backstage already matches OSM’s SPL readout.')),
       el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('osm') }, 'Save Open Sound Meter settings')),
       osmStatus);
     fetch('/api/dashboard').then((r) => r.json()).then((d) => {
@@ -973,7 +974,7 @@
       const out = el('div', { class: 'help' });
       spBox.replaceChildren(
         el('ol', { class: 'help steps' },
-          el('li', {}, 'Go to ', el('a', { href: 'https://developer.spotify.com/dashboard', target: '_blank', rel: 'noopener' }, 'developer.spotify.com/dashboard'), ', sign in with the church Spotify account, and click Create app (any name, e.g. “Green Room”). Tick “Web API”.'),
+          el('li', {}, 'Go to ', el('a', { href: 'https://developer.spotify.com/dashboard', target: '_blank', rel: 'noopener' }, 'developer.spotify.com/dashboard'), ', sign in with the church Spotify account, and click Create app (any name, e.g. “Backstage”). Tick “Web API”.'),
           el('li', {}, 'Under Redirect URIs add exactly: ', el('code', {}, sp.redirectUri || 'http://127.0.0.1:8888/callback'), ' and save.'),
           el('li', {}, 'Copy the app’s Client ID into the box below and click Connect Spotify. Sign in and click Agree.'),
           el('li', {}, 'Your browser then lands on a page that won’t load — that’s expected. Copy the whole address from the address bar, paste it below and click Finish.')),
@@ -999,8 +1000,8 @@
     };
     drawSpotify();
     const spSection = el('div', { class: 'section' },
-      el('h2', {}, 'Spotify (sound desk)'),
-      el('p', { class: 'help' }, 'Shows what’s playing and lets the sound desk play/pause, skip, set volume and start a playlist from /sound/. Controls need Spotify Premium and an admin sign-in on that computer.'),
+      el('h2', {}, 'Spotify'),
+      el('p', { class: 'help' }, 'Shows what’s playing and lets Front of House play/pause, skip, set volume and start a playlist from /sound/. Controls need Spotify Premium and an admin sign-in on that computer.'),
       spBox);
 
     // Updates ------------------------------------------------------------------------------
@@ -1012,7 +1013,7 @@
         el('p', {}, `Running v${u.version}${u.commit ? ` (build ${u.commit})` : ''}.`),
         u.autoUpdate
           ? el('div', {},
-            el('p', { class: 'help' }, 'Automatic updates are on: new versions install by themselves Monday–Saturday between 1 AM and 5 PM (never during Sunday services or evening rehearsals). Open dashboards reload on their own.'),
+            el('p', { class: 'help' }, 'Automatic updates are on: new versions install by themselves Monday–Saturday between 1 AM and 5 PM (never during Sunday services or evening rehearsals). Open screens reload on their own.'),
             el('div', { class: 'row' }, el('button', {
               class: 'primary',
               onclick: async (e) => {
@@ -1041,15 +1042,15 @@
     const TOOLS = [
       ['level', 'Level meter', 'Live SPL, Leq and max from Open Sound Meter'],
       ['spotify', 'Spotify', 'Now playing, play/pause/skip, volume, playlists'],
-      ['timers', 'ProPresenter timers', 'The same timers as the dashboard'],
+      ['timers', 'ProPresenter timers', 'The same timers as Backstage'],
       ['recording', 'Recording & stream', 'HyperDeck timecode, OBS stream and record time'],
       ['order', 'Order of service', 'Leaders, keys and live item timing'],
       ['roster', 'Mic & IEM assignments', 'Who has which mic, IEM and other device'],
     ];
     const chosenTools = new Set(s.sound?.tools || ['level', 'spotify', 'order']);
     const soundSection = el('div', { class: 'section' },
-      el('h2', {}, 'Sound desk'),
-      el('p', { class: 'help' }, 'Choose the tools shown on the sound desk page. Small tools (level, Spotify, timers, recording) stack on the left; the order of service and mic list fill the right.'),
+      el('h2', {}, 'Front of House'),
+      el('p', { class: 'help' }, 'Choose the tools shown on Front of House (the sound desk page). Small tools (level, Spotify, timers, recording) stack on the left; the order of service and mic list fill the right.'),
       el('div', { class: 'tool-grid' }, TOOLS.map(([key, name, desc]) => el('label', { class: 'tool' },
         el('input', { type: 'checkbox', checked: chosenTools.has(key), onchange: (e) => { if (e.target.checked) chosenTools.add(key); else chosenTools.delete(key); } }),
         el('span', {}, el('strong', {}, name), el('span', { class: 'help' }, desc))))),
@@ -1060,14 +1061,14 @@
             s.sound = { tools: TOOLS.map(([k]) => k).filter((k) => chosenTools.has(k)) };
             await saveSection('sound');
           },
-        }, 'Save sound desk tools'),
-        el('a', { href: '/sound/', target: '_blank', class: 'btn' }, 'Open sound desk ↗')),
-      el('p', { class: 'help', style: 'margin-top:0.8rem' }, 'One computer can show a different set with a link, e.g. ', el('code', {}, `${origin}/sound/?tools=level,order`), '. Open Sound Meter and Spotify are set up under Connections.'));
+        }, 'Save Front of House tools'),
+        el('a', { href: '/foh', target: '_blank', class: 'btn' }, 'Open Front of House ↗')),
+      el('p', { class: 'help', style: 'margin-top:0.8rem' }, 'One computer can show a different set with a link, e.g. ', el('code', {}, `${origin}/foh?tools=level,order`), '. Open Sound Meter and Spotify are set up under Connections.'));
 
     // Settings navigation: one page at a time, grouped, with live status dots -----------------
     const PAGES = [
       ['Service', [['pco', 'Planning Center', pcoSection], ['live', 'Live timing', liveSection]]],
-      ['Screens', [['dashboard', 'Dashboard', displaySection], ['sound', 'Sound desk', soundSection]]],
+      ['Screens', [['dashboard', 'Backstage', displaySection], ['sound', 'Front of House', soundSection]]],
       ['Connections', [['propresenter', 'ProPresenter', ppSection], ['hyperdeck', 'HyperDeck', hdSection], ['obs', 'OBS', obsSection], ['unifi', 'UniFi Access', unifiSection], ['osm', 'Open Sound Meter', osmSection], ['spotify', 'Spotify', spSection]]],
       ['System', [['updates', 'Updates', updSection], ['password', 'Password', pwSection]]],
     ];

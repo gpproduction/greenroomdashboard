@@ -3,7 +3,7 @@
 // Auth: Authorization Code with PKCE (no client secret). Spotify only allows
 // http redirect URIs on the loopback address, so the one-time sign-in redirects to
 // http://127.0.0.1:8888/callback (nothing listens there); the admin pastes that URL
-// back into Green Room, which swaps the code for a refresh token.
+// back into Backstage, which swaps the code for a refresh token.
 // Playback control needs Spotify Premium (Spotify's rule, not ours).
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';

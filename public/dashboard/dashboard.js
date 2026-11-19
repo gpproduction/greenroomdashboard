@@ -1,4 +1,4 @@
-/* Green Room dashboard — designed to run unattended in a Chrome kiosk window.
+/* GrowPoint Backstage (green room screen) — designed to run unattended in a Chrome kiosk window.
  *
  * URL options (combine with &):
  *   ?layout=full|roster|order|timers   which panels to show (default full)
@@ -13,7 +13,7 @@
   const teamFilter = (params.get('teams') || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
   document.body.classList.add(`layout-${layout}`);
   if (params.get('side') === '0') document.body.classList.add('no-side');
-  if (params.get('embed') === '1') document.body.classList.add('embed'); // inside another page (e.g. the sound desk): no header/footer
+  if (params.get('embed') === '1') document.body.classList.add('embed'); // inside another page (e.g. Front of House): no header/footer
   if (params.get('scale')) document.documentElement.style.setProperty('--user-scale', params.get('scale'));
 
   const $ = (id) => document.getElementById(id);

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Green Room — install as a macOS background service that starts at boot.
+# GrowPoint Backstage — install as a macOS background service that starts at boot.
 #
 #   ./deploy/macos/install.sh            install / reinstall
 #   ./deploy/macos/install.sh --dry-run  show what would be written, change nothing
@@ -25,7 +25,7 @@ if [[ $DRY_RUN -eq 0 ]]; then
   # macOS privacy protection blocks background services from these folders.
   case "$APP_DIR" in
     "$HOME/Documents"*|"$HOME/Desktop"*|"$HOME/Downloads"*|*"/Library/Mobile Documents"*)
-      fail "Green Room can't run as a background service from ${APP_DIR} (macOS blocks Documents/Desktop/Downloads/iCloud).
+      fail "GrowPoint Backstage can't run as a background service from ${APP_DIR} (macOS blocks Documents/Desktop/Downloads/iCloud).
 Move the folder to your home folder, e.g.:  mv \"${APP_DIR}\" ~/greenroom  — then run ~/greenroom/deploy/macos/install.sh" ;;
   esac
 fi
@@ -99,7 +99,7 @@ rm -f "$TMP"
 sudo launchctl bootstrap system "$PLIST"
 sudo launchctl enable "system/${LABEL}"
 
-say "Waiting for Green Room to start"
+say "Waiting for GrowPoint Backstage to start"
 for _ in $(seq 1 20); do
   if curl -fsS "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1; then STARTED=1; break; fi
   sleep 1
@@ -116,7 +116,7 @@ fi
 
 HOSTNAME_LOCAL="$(scutil --get LocalHostName 2>/dev/null || hostname -s).local"
 IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo '<this-mac-ip>')"
-say "Green Room is running and will start automatically at boot"
+say "GrowPoint Backstage is running and will start automatically at boot"
 cat <<MSG
 
   Admin:      http://${IP}:${PORT}/admin      (or http://${HOSTNAME_LOCAL}:${PORT}/admin)
