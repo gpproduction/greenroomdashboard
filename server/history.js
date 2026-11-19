@@ -20,6 +20,14 @@ function timeLabel(iso, timeZone) {
   }
 }
 
+// Totals only count the main service: pre-service (countdown, walk-in) and post-service
+// items keep their own row times but never count toward the service's actual length.
+// Without a saved plan, or for an item no longer in it, every recorded item counts.
+export function serviceActual(snap, items) {
+  const pos = new Map((snap?.items || []).map((i) => [i.id, i.position]));
+  return Object.entries(items || {}).reduce((a, [id, v]) => a + (!pos.has(id) || pos.get(id) === 'during' ? v : 0), 0);
+}
+
 const plannedTotal = (snap) => (snap?.items || []).filter((i) => i.type !== 'header' && i.position === 'during').reduce((a, i) => a + (i.length || 0), 0);
 
 /** One row per recorded plan, newest first. */
@@ -32,7 +40,7 @@ export function historyList(db, timeZone) {
     const planned = plannedTotal(snap);
     const services = timeIds.map((tid) => {
       const t = snap?.times?.find((x) => x.id === tid);
-      const actual = Object.values(byTime[tid].items || {}).reduce((a, v) => a + v, 0);
+      const actual = serviceActual(snap, byTime[tid].items);
       return { planTimeId: tid, startsAt: t?.startsAt || byTime[tid].segments?.[0]?.startedAt || null, label: timeLabel(t?.startsAt, timeZone), actual, planned, delta: planned ? actual - planned : null };
     }).sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt)));
     out.push({

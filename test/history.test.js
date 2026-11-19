@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { historyList, historyDetail, historyTrends, historyCsv } from '../server/history.js';
+import { historyList, historyDetail, historyTrends, historyCsv, serviceActual } from '../server/history.js';
 
 const snap = (planId, date, sermonLen = 2100) => ({
   planId, serviceTypeName: 'Sunday Morning', seriesTitle: 'Series', dates: date, sortDate: `${date}T14:00:00Z`,
@@ -63,4 +63,17 @@ test('CSV has a header, item rows and totals; quotes commas', () => {
   assert.match(lines[0], /^Date,Service type/);
   assert.ok(lines.some((l) => l.includes('"Welcome, New Here"') && l.includes('3:20')));
   assert.ok(lines.some((l) => l.includes(',TOTAL,') && l.includes('48:30')));
+});
+
+test('service totals count main-service items only, not the pre-service countdown', () => {
+  const withCountdown = { ...db, live: { A: { 'A-9': { items: { c: 600, s1: 310, w: 200, m: 2400, gone: 30 } } } }, history: { A: db.history.A } };
+  const [plan] = historyList(withCountdown, NY);
+  assert.equal(plan.services[0].actual, 310 + 200 + 2400 + 30); // countdown's 600 left out; removed item still counts
+  assert.equal(plan.services[0].planned, 300 + 120 + 2100);
+  const d = historyDetail(withCountdown, 'A', NY);
+  assert.equal(d.items.find((i) => i.id === 'c').actual['A-9'], 600); // its own row keeps its time
+});
+
+test('serviceActual counts everything when there is no saved plan', () => {
+  assert.equal(serviceActual(null, { a: 10, b: 20 }), 30);
 });

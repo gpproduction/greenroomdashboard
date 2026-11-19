@@ -250,8 +250,8 @@
       const isActive = item.id === activeId;
       const isLive = live?.recording && item.id === live.currentItemId;
       const secs = hasActuals ? actualSeconds(item) : 0;
-      if (item.position === 'during') plannedTotal += item.length || 0;
-      actualTotal += secs;
+      // Totals are the main service only; pre/post-service items still show their own time.
+      if (item.position === 'during') { plannedTotal += item.length || 0; actualTotal += secs; }
       const over = item.length && secs > item.length;
 
       const timing = el('span', { class: 'timing' },
@@ -290,7 +290,7 @@
       node.classList.toggle('over', Boolean(item.length && secs > item.length));
     }
     const total = $('live-total');
-    if (total) total.textContent = fmtDuration(state.plan.items.reduce((sum, i) => sum + (i.type === 'header' ? 0 : actualSeconds(i)), 0));
+    if (total) total.textContent = fmtDuration(state.plan.items.reduce((sum, i) => sum + (i.type !== 'header' && i.position === 'during' ? actualSeconds(i) : 0), 0));
   }
 
   // Announcements box (Admin → Settings → Backstage), pulled from Planning Center.

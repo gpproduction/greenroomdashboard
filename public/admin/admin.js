@@ -371,7 +371,10 @@
       el('p', { class: 'help' }, 'Actual time spent on each item, recorded automatically while an item is live in ProPresenter during each service time (never during rehearsals).'));
     if (!services.length) { section.append(el('p', { class: 'muted' }, 'This plan has no service times in Planning Center.')); return section; }
     const items = data.items.filter((i) => i.type !== 'header');
-    const totals = services.map((t) => Object.values(data.live[t.id]?.items || {}).reduce((a, b) => a + b, 0));
+    // Main service only: pre/post-service items (countdown, walk-in) don't count toward the total.
+    const during = new Set(items.filter((i) => i.position === 'during').map((i) => i.id));
+    const known = new Set(items.map((i) => i.id));
+    const totals = services.map((t) => Object.entries(data.live[t.id]?.items || {}).reduce((a, [id, v]) => a + (during.has(id) || !known.has(id) ? v : 0), 0));
     section.append(el('div', { class: 'table-wrap' }, el('table', { class: 'timing-table' },
       el('thead', {}, el('tr', {},
         el('th', {}, 'Item'), el('th', {}, 'Planned'),
