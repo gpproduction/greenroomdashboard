@@ -145,6 +145,8 @@ body.layout-order .roster, body.layout-order .right-col { display: none !importa
   font-size: 1.15rem;
   white-space: nowrap;
 }
+.chip.mismatch { background: rgba(255, 212, 59, 0.18); border-color: #ffd43b; color: #ffe066; box-shadow: 0 0 0 1px #ffd43b inset; }
+.chip.mismatch .k { color: #ffd43b; }
 .chip .k { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
 /* Panels ---------------------------------------------------------------------- */

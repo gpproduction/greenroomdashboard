@@ -91,3 +91,7 @@ html[data-theme="pco-light"] .np-artist, html[data-theme="pco-light"] .times, ht
 html[data-theme="pco-light"] .unit span:first-child { color: #111827; }
 html[data-theme="pco-light"] .ctl.big { background: #1db954; border-color: #1db954; color: #fff; }
 html[data-theme="pco-light"] .spl { color: #1b7f3f; }
+
+/* Mic/IEM out of sync — yellow, readable on the light theme too */
+html[data-theme="pco-light"] .chip.mismatch { background: #fff3bf; border-color: #f2c200; color: #5c4400; box-shadow: 0 0 0 1px #f2c200 inset; }
+html[data-theme="pco-light"] .chip.mismatch .k { color: #8a6800; }

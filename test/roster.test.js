@@ -119,3 +119,23 @@ test('linked: clearing the mic clears its partner IEM; unlinked mic leaves slot 
   assert.deepEqual(assignmentChanges(db, 'P', 'k', 'mic', 'm9'), { mic: 'm9', iem: null });
 });
 
+
+test('flags a mic/IEM pair that is out of sync', () => {
+  const det = { plan: { id: 'P1' }, members: [
+    { personId: '1', name: 'Ann', teamId: 'w', teamName: 'Worship Team', position: 'Vocals', status: 'C' },
+    { personId: '2', name: 'Bob', teamId: 'w', teamName: 'Worship Team', position: 'Vocals', status: 'C' },
+    { personId: '3', name: 'Cy', teamId: 'w', teamName: 'Worship Team', position: 'Vocals', status: 'C' },
+  ] };
+  const data = db({
+    devices: [
+      { id: 'm1', type: 'mic', name: 'VOX 1', linkedId: 'e1' }, { id: 'e1', type: 'iem', name: 'IEM 1', linkedId: 'm1' },
+      { id: 'e5', type: 'iem', name: 'IEM 5', linkedId: null }, { id: 'm9', type: 'mic', name: 'Headset', linkedId: null },
+    ],
+    defaults: { 'p:1': { mic: 'm1', iem: 'e5' }, 'p:2': { mic: 'm1', iem: 'e1' }, 'p:3': { mic: 'm9', iem: 'e5' } },
+  });
+  data.settings.pco.teamIds = ['w'];
+  const m = Object.fromEntries(buildRoster(det, data).teams[0].members.map((x) => [x.name, x.mismatch]));
+  assert.deepEqual(m.Ann, { pairedIem: 'IEM 1' }); // VOX 1 + IEM 5 → out of sync
+  assert.equal(m.Bob, null); // matched pair
+  assert.equal(m.Cy, null); // unpaired mic → nothing to compare
+});

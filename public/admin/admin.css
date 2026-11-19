@@ -125,6 +125,12 @@ td select { width: 100%; }
 .source-default { font-size: 0.75rem; color: var(--muted); }
 .swatch { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 3px; vertical-align: middle; margin-right: 0.3rem; border: 1px solid var(--line); }
 td.conflict select { border-color: var(--bad); }
+td.mismatch select { border-color: #e0b100; background: #fff7d1; color: #3d2f00; }
+.mismatch-note { font-size: 0.75rem; color: #8a6800; font-weight: 600; margin-top: 0.15rem; }
+@media (prefers-color-scheme: dark) {
+  td.mismatch select { background: #3a3110; color: #ffe8a3; }
+  .mismatch-note { color: #f5d36b; }
+}
 
 .table-wrap { overflow-x: auto; }
 @media (max-width: 640px) {

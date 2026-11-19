@@ -105,11 +105,11 @@
     requestAnimationFrame(autoFit);
   }
 
-  function chip(label, dev) {
+  function chip(label, dev, mismatch = null) {
     if (!dev) return null; // nothing assigned → no placeholder chip
     return el('span', {
-      class: 'chip',
-      title: [dev.kind, dev.frequency].filter(Boolean).join(' · '),
+      class: 'chip' + (mismatch ? ' mismatch' : ''),
+      title: mismatch ? `Mic and IEM aren’t a pair${mismatch.pairedIem ? ` — this mic goes with ${mismatch.pairedIem}` : ''}` : [dev.kind, dev.frequency].filter(Boolean).join(' · '),
     }, label ? el('span', { class: 'k' }, label) : null, dev.name);
   }
 
@@ -152,7 +152,8 @@
               m.arrivedAt ? el('span', { class: 'arrived-tag' }, '✓ Arrived', el('span', { class: 'at' }, fmtTime(new Date(m.arrivedAt).toISOString()))) : null,
               m.positions.join(', '), m.status === 'U' ? el('span', { class: 'tag' }, 'unconfirmed') : null)),
           // "Other" (acoustic pack, violin mic…) shows as a plain chip with just its name.
-          el('div', { class: 'devices' }, chip('Mic', m.mic), chip('IEM', m.iem), chip('', m.other)),
+          // Yellow when the mic and IEM aren't a pair (e.g. VOX 1 with IEM 5).
+          el('div', { class: 'devices' }, chip('Mic', m.mic, m.mismatch), chip('IEM', m.iem, m.mismatch), chip('', m.other)),
         )),
       ));
     }

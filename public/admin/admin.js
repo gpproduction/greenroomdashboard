@@ -256,9 +256,13 @@
               } catch (err) { toast(err.message, true); }
             },
           }, deviceOptions(field, current, others));
-          return el('td', { class: current && conflictIds.has(current) ? 'conflict' : '' },
+          // Yellow when this person's mic and IEM aren't a pair (e.g. VOX 1 with IEM 5).
+          const outOfSync = m.mismatch && (field === 'mic' || field === 'iem');
+          return el('td', { class: [current && conflictIds.has(current) ? 'conflict' : '', outOfSync ? 'mismatch' : ''].join(' ') },
             sel,
-            m[field]?.source === 'default' ? el('div', { class: 'source-default' }, 'auto (remembered)') : null);
+            outOfSync && field === 'iem'
+              ? el('div', { class: 'mismatch-note' }, `⚠ ${m.mic.name} is paired with ${m.mismatch.pairedIem || 'another IEM'}`)
+              : m[field]?.source === 'default' ? el('div', { class: 'source-default' }, 'auto (remembered)') : null);
         };
         // "Show on dashboard": always on (and locked) while they have a device.
         const showBox = el('input', {

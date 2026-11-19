@@ -23,6 +23,12 @@ export function teamShownByDefault(settings, team) {
   return /worship/i.test(team.name || '');
 }
 
+/** Returns { pairedIemName } when mic and IEM don't match their pairing, else null. */
+export function pairMismatch(mic, iem, devices) {
+  if (!mic || !iem || !mic.linkedId || mic.linkedId === iem.id) return null;
+  return { pairedIem: devices.get(mic.linkedId)?.name || null };
+}
+
 function resolve(planAssign, defaults, key, field) {
   const explicit = planAssign[key];
   if (explicit && field in explicit) return { id: explicit[field], source: 'plan' };
@@ -88,6 +94,9 @@ export function buildRoster(detail, db, { forAdmin = false } = {}) {
       // Show on dashboard: anyone with a device always shows; otherwise their own
       // checkbox, else the team default (Worship Team on, others off).
       row.hasDevice = Boolean(row.mic || row.iem || row.other);
+      // Out of sync: the mic is paired (Devices page) with a different IEM than this person has,
+      // e.g. VOX 1 is paired with IEM 1 but they're on IEM 5. Highlighted yellow on screens.
+      row.mismatch = pairMismatch(row.mic, row.iem, devices);
       const explicit = db.visibility?.[visibilityKey(t.id, m.key)];
       row.showChoice = typeof explicit === 'boolean' ? explicit : (t.id === '__extras' ? true : teamShownByDefault(settings, t));
       row.shown = row.hasDevice || row.showChoice;
