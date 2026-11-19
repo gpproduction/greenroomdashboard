@@ -70,6 +70,23 @@ export function currentWindow(db, detail, now) {
   return real || testWindow(db.liveTest, now);
 }
 
+/** A copy of the plan kept with its recordings, so history survives later edits in Planning Center. */
+export function planSnapshot(detail) {
+  const p = detail.plan;
+  return {
+    planId: p.id,
+    serviceTypeId: p.serviceTypeId || null,
+    serviceTypeName: p.serviceTypeName || '',
+    title: p.title || null,
+    seriesTitle: p.seriesTitle || null,
+    dates: p.dates || '',
+    sortDate: p.sortDate || null,
+    times: (p.times || []).map(({ id, name, type, startsAt, endsAt }) => ({ id, name, type, startsAt, endsAt })),
+    items: (detail.items || []).map(({ id, title, type, length, position, sequence }) => ({ id, title, type, length: length || 0, position, sequence })),
+    savedAt: new Date().toISOString(),
+  };
+}
+
 /**
  * One step of the timing state machine.
  * current: { planId, planTimeId, itemId, startedAt, windowEnd } | null
@@ -106,6 +123,8 @@ export function tick(now = Date.now()) {
   if (res.closed.length || JSON.stringify(res.current) !== JSON.stringify(db.liveCurrent)) {
     store.update((d) => {
       d.liveCurrent = res.current;
+      // Keep a copy of the plan alongside real (non-test) recordings for History.
+      if (detail && win && !win.test) (d.history ??= {})[detail.plan.id] = planSnapshot(detail);
       for (const s of res.closed) {
         const rec = ((d.live[s.planId] ??= {})[s.planTimeId] ??= { items: {}, segments: [] });
         rec.items[s.itemId] = (rec.items[s.itemId] || 0) + s.seconds;

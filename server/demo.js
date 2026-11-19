@@ -87,6 +87,8 @@ const PEOPLE = [
   ['p7', 'Morgan Diaz', 't1', 'Worship Team', 'Keys', 'C'],
   ['p8', 'Jamie Fox', 't1', 'Worship Team', 'Drums', 'C'],
   ['p14', 'Chris Young', 't1', 'Worship Team', 'Aux/Organ', 'C'], // no device: shows because Worship Team shows everyone
+  ['p15', 'Robin Park', 't4', 'Host Team', 'Greeter', 'C'],
+  ['p16', 'Dana Cruz', 't4', 'Host Team', 'Info Center', 'C'],
   ['p9', 'Pat Kim', 't2', 'Production Team', 'Speaking Pastor', 'C'],
   ['p10', 'Drew Hall', 't2', 'Production Team', 'Announcements', 'C'],
   ['p11', 'Quinn Ward', 't2', 'Production Team', 'Sound', 'C'],
@@ -121,6 +123,33 @@ export function planDetail() {
     })),
     fetchedAt: new Date().toISOString(),
   };
+}
+
+/** Three past Sundays of recorded item times, for the History tab in demo mode. */
+export function seedHistory() {
+  const live = {};
+  const history = {};
+  const items = [
+    ['c', 'Countdown', 'media', 300, 'pre'], ['s1', 'Opening Song', 'song', 270, 'during'], ['s2', 'Second Song', 'song', 300, 'during'],
+    ['w', 'Welcome & Announcements', 'item', 300, 'during'], ['s3', 'Third Song', 'song', 330, 'during'],
+    ['m', 'Sermon', 'item', 2100, 'during'], ['r', 'Response Song', 'song', 300, 'during'], ['d', 'Dismissal', 'item', 120, 'during'],
+  ];
+  const jitter = [[0, 15, -10, 95, 20, 290, 40, 10], [0, -5, 25, 140, 0, 410, -20, 25], [0, 10, 5, 60, -15, 180, 30, -10]];
+  for (let w = 1; w <= 3; w++) {
+    const day = new Date(nextSunday().getTime() - w * 7 * 86400_000);
+    const id = `demo-past-${w}`;
+    const t9 = `${id}-9`, t11 = `${id}-11`;
+    history[id] = {
+      planId: id, serviceTypeId: 'st1', serviceTypeName: 'Sunday Morning', title: null, seriesTitle: 'Demo Series',
+      dates: day.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), sortDate: at(day, 9, 0),
+      times: [{ id: t9, name: null, type: 'service', startsAt: at(day, 9, 0), endsAt: at(day, 10, 30) }, { id: t11, name: null, type: 'service', startsAt: at(day, 11, 0), endsAt: at(day, 12, 30) }],
+      items: [{ id: 'h', title: 'Worship', type: 'header', length: 0, position: 'during', sequence: 0 }, ...items.map(([iid, title, type, length, position], i) => ({ id: iid, title, type, length, position, sequence: i + 1 }))],
+      savedAt: new Date().toISOString(),
+    };
+    const rec = (k) => ({ items: Object.fromEntries(items.map(([iid, , , len], i) => [iid, Math.max(30, len + jitter[w - 1][i] + k)])), segments: [] });
+    live[id] = { [t9]: rec(0), [t11]: rec(-25) };
+  }
+  return { live, history };
 }
 
 export function seedDevices() {

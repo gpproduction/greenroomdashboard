@@ -18,6 +18,7 @@ import * as media from './media.js';
 import * as unifi from './unifi.js';
 import * as osm from './osm.js';
 import * as spotify from './spotify.js';
+import { historyList, historyDetail, historyTrends, historyCsv } from './history.js';
 import { buildRoster, assignmentChanges, FIELDS, visibilityKey } from './roster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +35,9 @@ if (pco.isDemo() && !store.get().devices.length) {
     db.defaults = Object.fromEntries(Object.entries(demo.seedAssignments()).map(([k, v]) => [`p:${k}`, v]));
     db.settings.pco.serviceTypeIds = ['st1'];
     db.settings.pco.teamIds = ['t1', 't2'];
+    const past = demo.seedHistory();
+    Object.assign(db.live, past.live);
+    db.history = { ...(db.history || {}), ...past.history };
   });
 }
 auth.bootstrapPassword();
@@ -348,6 +352,35 @@ admin.post('/update', async (req, res) => {
     headers: { Authorization: `Bearer ${process.env.UPDATER_TOKEN || ''}` },
     signal: AbortSignal.timeout(10 * 60_000),
   }).then((r) => console.log(`[update] updater answered ${r.status}`)).catch((err) => console.log(`[update] ${err.message}`));
+  res.json({ ok: true });
+});
+
+// History of recorded services ---------------------------------------------------------
+const tzNow = () => store.get().settings.display.timezone;
+admin.get('/history', (req, res) => {
+  const db = store.get();
+  res.json({ plans: historyList(db, tzNow()), trends: historyTrends(db, tzNow(), Number(req.query.weeks) || 8) });
+});
+admin.get('/history/export.csv', (req, res) => {
+  const planId = req.query.planId || null;
+  const csv = historyCsv(store.get(), tzNow(), planId);
+  const name = planId ? `service-times-${planId}.csv` : `service-times-all-${new Date().toISOString().slice(0, 10)}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+  res.send('\uFEFF' + csv); // BOM so Excel reads UTF-8 names correctly
+});
+admin.get('/history/:planId', (req, res) => {
+  const d = historyDetail(store.get(), req.params.planId, tzNow());
+  d ? res.json(d) : res.status(404).json({ error: 'No recorded times for that plan' });
+});
+admin.delete('/history/:planId', (req, res) => {
+  store.update((db) => {
+    if (db.live[req.params.planId]) {
+      for (const k of Object.keys(db.live[req.params.planId])) if (k !== 'test') delete db.live[req.params.planId][k];
+      if (!Object.keys(db.live[req.params.planId]).length) delete db.live[req.params.planId];
+    }
+    delete db.history?.[req.params.planId];
+  }, { topic: 'live' });
   res.json({ ok: true });
 });
 

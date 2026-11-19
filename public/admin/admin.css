@@ -101,6 +101,11 @@ code { background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
 .conflicts li { color: var(--bad); }
 
 .team-block { margin-bottom: 1rem; }
+.team-toggle { width: 100%; border: 0; background: transparent; padding: 0; text-align: left; display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; cursor: pointer; }
+.team-toggle:hover h3 { color: var(--accent); }
+.team-block .team-head { margin-bottom: 0; }
+.team-block.open .team-head { margin-bottom: 0.4rem; }
+.team-block.open .chev { transform: rotate(90deg); }
 .team-block.dim { opacity: 0.65; }
 .team-head { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.4rem; }
 .team-head h3 { margin: 0; }
@@ -176,6 +181,20 @@ td.conflict select { border-color: var(--bad); }
   .nav-title { display: none; }
   .settings-nav button { white-space: nowrap; }
 }
+/* History */
+.delta.over { color: var(--warn); font-weight: 600; }
+.delta.under { color: var(--ok); }
+.hist-h { font-size: 1rem; margin: 1.4rem 0 0.6rem; }
+.hist-card { padding: 0; margin-bottom: 0.6rem; }
+.hist-head { width: 100%; display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; border: 0; background: transparent; padding: 0.8rem 1rem; text-align: left; border-radius: 14px; }
+.hist-head:hover { background: var(--bg); }
+.hist-title { display: flex; flex-direction: column; min-width: 12rem; }
+.hist-svcs { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-left: auto; }
+.pill-time { font-size: 0.9rem; padding: 0.2rem 0.6rem; border: 1px solid var(--line); border-radius: 99px; font-variant-numeric: tabular-nums; }
+.chev { transition: transform 0.15s; color: var(--muted); }
+.hist-card.open .chev { transform: rotate(90deg); }
+.hist-body { padding: 0 1rem 1rem; }
+.muted-row td { color: var(--muted); }
 .show-cell { width: 2.5rem; text-align: center; }
 .arrived-note { color: var(--ok); font-size: 0.8rem; font-weight: 600; }
 

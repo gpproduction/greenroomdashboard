@@ -11,6 +11,7 @@ A self-hosted mic and in-ear-monitor assignment board for church production team
 - **HyperDeck & OBS**: the dashboard footer shows HyperDeck record status and timecode (Ethernet control, port 9993) and OBS stream and record time (OBS WebSocket server, port 4455), next to the connection icons.
 - **Front of House** (`/foh` or `/sound/`): live SPL and Leq from Open Sound Meter, Spotify now-playing and controls, and the order of service. See [docs/SOUND-DESK.md](docs/SOUND-DESK.md).
 - **UniFi Access arrivals**: people who badged in today get a green "Arrived" (with the time) on the dashboard. Door unlocks come from the UniFi Access API (port 12445) and are matched to Planning Center names.
+- **History** (Admin → History): every recorded service, with planned vs actual per item for each service time, trends for recurring items over recent weeks, and CSV export for Excel or Google Sheets. A copy of each plan is saved with its times, so history survives later edits in Planning Center.
 - **Production test mode** (Admin → Live): click through ProPresenter outside service times to check item timing. It's recorded separately from real services.
 - **Announcements**: the description from Planning Center is shown under announcement items (configurable).
 - **Dashboard**: a full-screen page for Chrome on a greenroom TV. It updates live over a WebSocket, reconnects by itself, and reloads itself when the server is updated.
@@ -141,6 +142,7 @@ server/
   propresenter.js  ProPresenter 7 API poller (timers, active presentation)
   roster.js        merges plan people + devices + assignments, detects conflicts
   live.js          live item timing (ProPresenter → plan item, service-time windows)
+  history.js       past services: planned vs actual, trends, CSV
   media.js         HyperDeck (TCP 9993) + OBS (obs-websocket v5) status
   unifi.js         UniFi Access door arrivals matched to Planning Center names
   osm.js           Open Sound Meter levels (UDP multicast 49007) + Leq

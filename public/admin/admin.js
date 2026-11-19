@@ -83,7 +83,7 @@
 
   // ---- tabs --------------------------------------------------------------------
   let currentTab = 'assign';
-  const renderers = { assign: renderAssign, devices: renderDevices, live: renderLive, settings: renderSettings };
+  const renderers = { assign: renderAssign, devices: renderDevices, live: renderLive, history: renderHistory, settings: renderSettings };
   $('tabs').addEventListener('click', (e) => {
     const tab = e.target.closest('button')?.dataset.tab;
     if (!tab) return;
@@ -185,6 +185,18 @@
     }
   }
 
+  // Which Assign teams start open: remembered choice on this computer, else Worship/Production/guests.
+  function teamOpen(team) {
+    try {
+      const saved = localStorage.getItem(`assign.team.${team.id}`);
+      if (saved != null) return saved === '1';
+    } catch { /* storage unavailable */ }
+    return team.id === '__extras' || /worship|production/i.test(team.name);
+  }
+  function rememberTeamOpen(teamId, open) {
+    try { localStorage.setItem(`assign.team.${teamId}`, open ? '1' : '0'); } catch { /* storage unavailable */ }
+  }
+
   function avatar(m) {
     const initials = m.name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0].toUpperCase()).join('');
     if (!m.photo || !/^https:\/\//.test(m.photo) || /no_photo|default|placeholder/i.test(m.photo)) return el('div', { class: 'mini-avatar' }, initials);
@@ -278,11 +290,31 @@
           cell('iem'),
           cell('other'));
       });
-      return el('div', { class: 'section team-block' + (team.inFilter ? '' : ' dim') },
-        el('div', { class: 'team-head' }, el('h3', {}, team.name), team.inFilter ? null : el('span', { class: 'badge' }, 'hidden on Backstage')),
-        el('div', { class: 'table-wrap' }, el('table', { class: 'assign-table' },
-          el('thead', {}, el('tr', {}, el('th', { title: 'Show on Backstage' }, 'Show'), el('th', { style: 'width:34%' }, 'Person'), el('th', {}, 'Mic'), el('th', {}, 'IEM'), el('th', {}, 'Other'))),
-          el('tbody', {}, rows))));
+      // Collapsible: Worship & Production (and added guests) start open, other teams closed.
+      // A team you open or close stays that way on this computer.
+      const open = teamOpen(team);
+      const withDevice = team.members.filter((m) => m.hasDevice).length;
+      const shown = team.members.filter((m) => m.shown).length;
+      const block = el('div', { class: 'section team-block' + (team.inFilter ? '' : ' dim') + (open ? ' open' : '') });
+      const body = el('div', { class: 'table-wrap team-body' + (open ? '' : ' hidden') }, el('table', { class: 'assign-table' },
+        el('thead', {}, el('tr', {}, el('th', { title: 'Show on Backstage' }, 'Show'), el('th', { style: 'width:34%' }, 'Person'), el('th', {}, 'Mic'), el('th', {}, 'IEM'), el('th', {}, 'Other'))),
+        el('tbody', {}, rows)));
+      const head = el('button', {
+        class: 'team-head team-toggle',
+        'aria-expanded': String(open),
+        onclick: () => {
+          const nowOpen = body.classList.toggle('hidden') === false;
+          block.classList.toggle('open', nowOpen);
+          head.setAttribute('aria-expanded', String(nowOpen));
+          rememberTeamOpen(team.id, nowOpen);
+        },
+      },
+        el('span', { class: 'chev' }, '▸'),
+        el('h3', {}, team.name),
+        el('span', { class: 'help' }, `${team.members.length} ${team.members.length === 1 ? 'person' : 'people'} · ${withDevice} with devices · ${shown} shown`),
+        team.inFilter ? null : el('span', { class: 'badge' }, 'hidden on Backstage'));
+      block.append(head, body);
+      return block;
     });
 
     const guestName = el('input', { placeholder: 'Name (e.g. Guest Speaker)' });
@@ -470,6 +502,96 @@
 
     await refresh();
     livePoll = setInterval(refresh, 1000);
+  }
+
+  // ---- History tab -----------------------------------------------------------------------
+  // Past services with recorded item times: planned vs actual, recurring-item trends, CSV.
+  const signed = (secs) => (secs > 0 ? `+${fmtDur(secs)}` : secs < 0 ? `−${fmtDur(-secs)}` : '±0:00');
+  const deltaClass = (secs, planned) => (secs == null ? '' : secs > Math.max(30, planned * 0.05) ? 'over' : secs < 0 ? 'under' : '');
+
+  async function renderHistory() {
+    const root = $('tab-history');
+    root.replaceChildren(el('p', { class: 'muted' }, 'Loading…'));
+    let data;
+    try { data = await api('/api/admin/history'); } catch (err) { root.replaceChildren(el('p', { class: 'error' }, err.message)); return; }
+    const { plans, trends } = data;
+
+    if (!plans.length) {
+      root.replaceChildren(el('div', { class: 'section' },
+        el('h2', {}, 'History'),
+        el('p', { class: 'muted' }, 'No services recorded yet. Item times are recorded automatically during Planning Center service times while ProPresenter is connected (production tests aren’t included).')));
+      return;
+    }
+
+    // Trends across recent weeks
+    const t = trends;
+    const trendsBox = el('div', { class: 'section' },
+      el('div', { class: 'row', style: 'justify-content:space-between' },
+        el('h2', { style: 'margin:0' }, `Trends · last ${t.weeks} week${t.weeks === 1 ? '' : 's'}`),
+        el('a', { class: 'btn', href: '/api/admin/history/export.csv' }, '⬇ Export all (CSV)')),
+      t.service ? el('p', {}, 'Average service: ',
+        el('strong', {}, fmtDur(t.service.avgActual)), ` actual vs ${fmtDur(t.service.avgPlanned)} planned `,
+        el('span', { class: `delta ${deltaClass(t.service.avgActual - t.service.avgPlanned, t.service.avgPlanned)}` }, `(${signed(t.service.avgActual - t.service.avgPlanned)})`),
+        ` across ${t.service.services} service${t.service.services === 1 ? '' : 's'}.`) : null,
+      t.items.length
+        ? el('div', { class: 'table-wrap' }, el('table', { class: 'timing-table' },
+          el('thead', {}, el('tr', {}, el('th', {}, 'Recurring item'), el('th', {}, 'Weeks'), el('th', {}, 'Avg planned'), el('th', {}, 'Avg actual'), el('th', {}, 'Avg difference'))),
+          el('tbody', {}, t.items.map((i) => el('tr', {},
+            el('td', {}, i.title), el('td', { class: 'num' }, i.weeks), el('td', { class: 'num' }, fmtDur(i.avgPlanned)), el('td', { class: 'num' }, fmtDur(i.avgActual)),
+            el('td', { class: `num delta ${deltaClass(i.avgDelta, i.avgPlanned)}` }, signed(i.avgDelta)))))))
+        : el('p', { class: 'help' }, 'Trends for recurring items (Welcome, Message, Announcements…) appear once two or more weeks are recorded. Songs are left out because they change each week.'));
+
+    // One card per recorded plan; click to expand planned vs actual per item
+    const cards = plans.map((p) => {
+      const body = el('div', { class: 'hist-body hidden' });
+      const card = el('div', { class: 'section hist-card' },
+        el('button', {
+          class: 'hist-head',
+          onclick: async () => {
+            const open = body.classList.toggle('hidden') === false;
+            card.classList.toggle('open', open);
+            if (open && !body.childElementCount) body.replaceChildren(await historyTable(p, () => renderHistory()));
+          },
+        },
+          el('span', { class: 'chev' }, '▸'),
+          el('span', { class: 'hist-title' }, el('strong', {}, p.dates), el('span', { class: 'help' }, [p.serviceTypeName, p.title].filter(Boolean).join(' · '))),
+          el('span', { class: 'hist-svcs' }, p.services.map((s) => el('span', { class: 'pill-time' },
+            `${s.label} `, el('strong', {}, fmtDur(s.actual)),
+            s.delta != null ? el('span', { class: `delta ${deltaClass(s.delta, s.planned)}` }, ` ${signed(s.delta)}`) : null)))),
+        body);
+      return card;
+    });
+
+    root.replaceChildren(trendsBox, el('h2', { class: 'hist-h' }, 'Recorded services'), ...cards);
+  }
+
+  async function historyTable(p, reload) {
+    const d = await api(`/api/admin/history/${encodeURIComponent(p.planId)}`);
+    const rows = d.items.filter((i) => i.type !== 'header');
+    return el('div', {},
+      d.hasSnapshot ? null : el('p', { class: 'help' }, 'Recorded before plan copies were saved — item names come from the current plan where possible.'),
+      el('div', { class: 'table-wrap' }, el('table', { class: 'timing-table' },
+        el('thead', {}, el('tr', {}, el('th', {}, 'Item'), el('th', {}, 'Planned'), d.services.map((s) => el('th', {}, s.label)))),
+        el('tbody', {},
+          rows.map((i) => el('tr', { class: i.position !== 'during' ? 'muted-row' : '' },
+            el('td', {}, i.title),
+            el('td', { class: 'num' }, i.length ? fmtDur(i.length) : ''),
+            d.services.map((s) => {
+              const a = i.actual[s.planTimeId];
+              return el('td', { class: `num ${a && i.length && a > i.length ? 'over' : ''}` }, a ? fmtDur(a) : '');
+            }))),
+          el('tr', { class: 'total' }, el('td', {}, 'Total'), el('td', { class: 'num' }, fmtDur(d.services[0]?.planned || 0)),
+            d.services.map((s) => el('td', { class: 'num' }, fmtDur(s.actual), s.delta != null ? el('span', { class: `delta ${deltaClass(s.delta, s.planned)}` }, ` ${signed(s.delta)}`) : null)))))),
+      el('div', { class: 'row', style: 'margin-top:0.7rem' },
+        el('a', { class: 'btn', href: `/api/admin/history/export.csv?planId=${encodeURIComponent(p.planId)}` }, '⬇ Export this service (CSV)'),
+        el('button', {
+          class: 'ghost danger',
+          onclick: async () => {
+            if (!confirm(`Delete the recorded times for ${p.dates}? This can’t be undone.`)) return;
+            await api(`/api/admin/history/${encodeURIComponent(p.planId)}`, { method: 'DELETE' });
+            toast('Deleted'); reload();
+          },
+        }, 'Delete these times')));
   }
 
   // ---- Devices tab -------------------------------------------------------------------

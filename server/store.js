@@ -68,6 +68,7 @@ function defaults() {
     live: {}, // planId -> planTimeId -> { items: { itemId: seconds }, segments: [...] }
     liveCurrent: null, // { planId, planTimeId, itemId, startedAt, windowEnd } while an item is live
     liveTest: null, // { startedAt, until } while production test mode is on
+    history: {}, // planId -> snapshot of the plan (dates, times, item names/lengths) for recorded services
   };
 }
 
