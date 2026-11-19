@@ -67,15 +67,15 @@ body.no-timers main { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.5fr); 
 body.no-order main { grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.55fr); }
 body.no-order.no-timers main { grid-template-columns: 1fr; }
 body.layout-roster main, body.no-side main { grid-template-columns: 1fr; }
-body.layout-roster .order, body.layout-roster .timers, body.no-side .order, body.no-side .timers { display: none !important; }
+body.layout-roster .order, body.layout-roster .right-col, body.no-side .order, body.no-side .right-col { display: none !important; }
 body.layout-timers main { grid-template-columns: 1fr; }
-body.layout-timers .roster, body.layout-timers .order { display: none !important; }
+body.layout-timers .roster, body.layout-timers .order, body.layout-timers .announcements { display: none !important; }
 /* ?embed=1 — shown inside another page: no header/footer, no outer padding */
 body.embed .top, body.embed .status { display: none !important; }
 body.embed main { padding: 0; }
 /* ?layout=order — order of service only, full width */
 body.layout-order main { grid-template-columns: 1fr !important; }
-body.layout-order .roster, body.layout-order .timers { display: none !important; }
+body.layout-order .roster, body.layout-order .right-col { display: none !important; }
 
 /* Teams stacked, one person per row, sized for reading from across the room */
 .roster {
@@ -163,6 +163,17 @@ body.layout-order .roster, body.layout-order .timers { display: none !important;
   padding: 0.8rem 0 0.4rem; /* rows and section bands run edge to edge, like Planning Center */ }
 .order .panel-head { padding: 0 1rem 0.4rem; }
 .timers { overflow: hidden; }
+/* Right-hand column: timers, then announcements */
+.right-col { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
+body.layout-timers .right-col { flex: 1; }
+.announcements { overflow: hidden; flex: 1 1 auto; min-height: 0; }
+.announcements .ann-group + .ann-group { margin-top: 0.8rem; }
+.announcements .ann-title { font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.3rem; }
+.announcements ul { list-style: none; margin: 0; padding: 0; }
+.announcements li { position: relative; padding: 0.45rem 0 0.45rem 1.1rem; border-bottom: 1px solid var(--line); font-size: 1.15rem; line-height: 1.3; }
+.announcements li:last-child { border-bottom: 0; }
+.announcements li::before { content: ""; position: absolute; left: 0.1rem; top: 0.95rem; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--accent); }
+.announcements .empty { color: var(--muted); }
 
 /* Timers: own narrow column, name above a big time */
 .timer { padding: 0.55rem 0; border-bottom: 1px solid var(--line); }

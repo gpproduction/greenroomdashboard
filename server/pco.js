@@ -215,11 +215,14 @@ export async function resolveLeaders(assignmentsByItem, members, { positions, lo
 export async function planDetail(serviceTypeId, planId) {
   if (isDemo()) return demo.planDetail(planId);
   const base = `/service_types/${serviceTypeId}/plans/${planId}`;
-  const [planRes, itemsRes, membersRes] = await Promise.all([
+  const [planRes, itemsRes, membersRes, notesRes] = await Promise.all([
     request(base, { include: 'plan_times,series' }),
     requestAll(`${base}/items`, { include: 'item_notes,item_assignments' }),
     requestAll(`${base}/team_members`, { include: 'team' }),
+    // Plan-level notes (outside the order of service), e.g. an "Announcements" category.
+    requestAll(`${base}/notes`).catch(() => ({ data: [] })),
   ]);
+  const planNotes = notesRes.data.map((n) => ({ category: n.attributes.category_name, content: n.attributes.content })).filter((n) => n.content);
 
   const p = planRes.data;
   const planInc = indexIncluded(planRes.included);
@@ -298,6 +301,7 @@ export async function planDetail(serviceTypeId, planId) {
     },
     items,
     members,
+    planNotes,
     fetchedAt: new Date().toISOString(),
   };
 }

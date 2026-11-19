@@ -84,6 +84,13 @@ main.only-left .right, main.only-right .left { display: none; }
 .t-row.warning .t-time { color: var(--warn); }
 .t-row.overrun .t-time { color: var(--bad); }
 
+/* Announcements */
+.announcements ul { list-style: none; margin: 0; padding: 0; }
+.announcements li { position: relative; padding: 0.4rem 0 0.4rem 1.1rem; border-bottom: 1px solid var(--line); font-size: 1.05rem; }
+.announcements li:last-child { border-bottom: 0; }
+.announcements li::before { content: ""; position: absolute; left: 0.1rem; top: 0.85rem; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--brand-text); }
+.announcements .ann-title { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 0.4rem 0 0.2rem; }
+
 /* Recording / stream */
 #recording { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .rec { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.35rem 0.8rem; border-radius: 99px; border: 1px solid var(--line); background: var(--panel-2); }

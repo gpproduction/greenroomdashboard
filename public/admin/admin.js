@@ -693,6 +693,9 @@
 
     const field = (label, input, help) => el('label', { class: 'field' }, el('span', {}, label), input, help ? el('div', { class: 'help' }, help) : null);
     const check = (label, obj, key) => el('label', { class: 'check' }, el('input', { type: 'checkbox', checked: obj[key], onchange: (e) => { obj[key] = e.target.checked; } }), label);
+    const themeSelect = (obj, key) => el('select', { onchange: (e) => { obj[key] = e.target.value; } },
+      [['growpoint', 'GrowPoint (navy)'], ['pco-dark', 'Planning Center Dark'], ['pco-light', 'Planning Center Light']].map(([v, t]) => el('option', { value: v, selected: (obj[key] || 'growpoint') === v }, t)));
+    s.display.announcements ??= { enabled: false, source: 'both', noteCategory: 'Announcements', hideInOrder: true };
 
     async function saveSection(section) {
       try {
@@ -931,6 +934,8 @@
         logoInput));
     const displaySection = el('div', { class: 'section' },
       el('h2', {}, 'Backstage screen'),
+      el('div', { class: 'grid2' },
+        field('Theme', themeSelect(s.display, 'theme'), 'One TV can use a different theme with its link, e.g. /backstage?theme=pco-light')),
       el('p', { class: 'help' }, 'The header greets the room with “Good Morning”, “Good Afternoon” or “Good Evening” based on the time zone below.'),
       logoBox,
       check('Show the logo', s.display, 'showLogo'),
@@ -944,7 +949,15 @@
         field('Show item descriptions from Planning Center', el('select', { onchange: (e) => { s.display.itemDescriptions = e.target.value; } },
           [['announcements', 'Announcements only'], ['all', 'All items'], ['none', 'None']].map(([v, t]) => el('option', { value: v, selected: (s.display.itemDescriptions || 'announcements') === v }, t))),
           '“Announcements only” shows the description on items with “announcement” in the title.')),
-      el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('display') }, 'Save display settings')),
+      el('h3', {}, 'Announcements'),
+      el('p', { class: 'help' }, 'An Announcements box (under the timers on Backstage, and a tool on Front of House) pulled from Planning Center, so a long list doesn’t have to crowd the order of service. It uses the description of any item with “announcement” in its title, and/or plan notes in the category below. Each line becomes a bullet.'),
+      check('Show the Announcements box', s.display.announcements, 'enabled'),
+      el('div', { class: 'grid2' },
+        field('Take announcements from', el('select', { onchange: (e) => { s.display.announcements.source = e.target.value; } },
+          [['both', 'Announcement items and plan notes'], ['items', 'Announcement items in the order of service'], ['notes', 'Plan notes only']].map(([v, t]) => el('option', { value: v, selected: (s.display.announcements.source || 'both') === v }, t)))),
+        field('Plan note category', el('input', { value: s.display.announcements.noteCategory || 'Announcements', oninput: (e) => { s.display.announcements.noteCategory = e.target.value; } }), 'Only used for plan notes.')),
+      check('Move announcement details out of the order of service while the box is on (the item stays, for timing)', s.display.announcements, 'hideInOrder'),
+      el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('display') }, 'Save Backstage settings')),
       el('h3', {}, 'Dashboard links'),
       el('ul', { class: 'help' },
         el('li', {}, el('code', {}, `${origin}/backstage`), ' — Backstage, everything (same as /dashboard/)'),
@@ -1175,13 +1188,16 @@
       ['spotify', 'Spotify', 'Now playing, play/pause/skip, volume, playlists'],
       ['timers', 'ProPresenter timers', 'The same timers as Backstage'],
       ['recording', 'Recording & stream', 'HyperDeck timecode, OBS stream and record time'],
+      ['announcements', 'Announcements', 'From Planning Center (set up under Backstage)'],
       ['order', 'Order of service', 'Leaders, keys and live item timing'],
       ['roster', 'Mic & IEM assignments', 'Who has which mic, IEM and other device'],
     ];
     const chosenTools = new Set(s.sound?.tools || ['level', 'spotify', 'order']);
+    const soundTheme = themeSelect(s.sound || (s.sound = {}), 'theme');
     const soundSection = el('div', { class: 'section' },
       el('h2', {}, 'Front of House'),
       el('p', { class: 'help' }, 'Choose the tools shown on Front of House (the sound desk page). Small tools (level, Spotify, timers, recording) stack on the left; the order of service and mic list fill the right.'),
+      el('div', { class: 'grid2', style: 'margin-bottom:0.8rem' }, field('Theme', soundTheme)),
       el('div', { class: 'tool-grid' }, TOOLS.map(([key, name, desc]) => el('label', { class: 'tool' },
         el('input', { type: 'checkbox', checked: chosenTools.has(key), onchange: (e) => { if (e.target.checked) chosenTools.add(key); else chosenTools.delete(key); } }),
         el('span', {}, el('strong', {}, name), el('span', { class: 'help' }, desc))))),
@@ -1189,10 +1205,10 @@
         el('button', {
           class: 'primary',
           onclick: async () => {
-            s.sound = { tools: TOOLS.map(([k]) => k).filter((k) => chosenTools.has(k)) };
+            s.sound = { tools: TOOLS.map(([k]) => k).filter((k) => chosenTools.has(k)), theme: soundTheme.value };
             await saveSection('sound');
           },
-        }, 'Save Front of House tools'),
+        }, 'Save Front of House settings'),
         el('a', { href: '/foh', target: '_blank', class: 'btn' }, 'Open Front of House ↗')),
       el('p', { class: 'help', style: 'margin-top:0.8rem' }, 'One computer can show a different set with a link, e.g. ', el('code', {}, `${origin}/foh?tools=level,order`), '. Open Sound Meter and Spotify are set up under Connections.'));
 

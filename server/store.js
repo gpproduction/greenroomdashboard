@@ -42,6 +42,9 @@ function defaults() {
         showTimers: true,
         showServiceCountdown: true,
         itemDescriptions: 'announcements', // 'announcements' | 'all' | 'none'
+        theme: 'growpoint', // 'growpoint' | 'pco-dark' | 'pco-light'
+        // Announcements box: pulled from Planning Center (announcement items' descriptions and/or plan notes)
+        announcements: { enabled: false, source: 'both', noteCategory: 'Announcements', hideInOrder: true },
         reloadHours: 6,
       },
       live: {
@@ -55,7 +58,7 @@ function defaults() {
       osm: { enabled: false, source: '', curve: 'A', time: 'Slow', offset: 0, leqMinutes: 15, warn: 95, alarm: 100 }, // Open Sound Meter levels
       spotify: { clientId: '', refreshToken: '' }, // Spotify Web API (PKCE)
       // Sound desk page tools, in display order: level | spotify | timers | recording | order | roster
-      sound: { tools: ['level', 'spotify', 'order'] },
+      sound: { tools: ['level', 'spotify', 'order'], theme: 'growpoint' },
       admin: { passwordHash: null },
     },
     devices: [], // { id, type: 'mic'|'iem'|'other', name, channel, frequency, kind, notes, active, linkedId }

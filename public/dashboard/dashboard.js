@@ -14,6 +14,10 @@
   document.body.classList.add(`layout-${layout}`);
   if (params.get('side') === '0') document.body.classList.add('no-side');
   if (params.get('embed') === '1') document.body.classList.add('embed'); // inside another page (e.g. Front of House): no header/footer
+  // Theme: ?theme= on the link wins, else Admin → Settings → Backstage.
+  const urlTheme = params.get('theme');
+  const applyTheme = (t) => { document.documentElement.dataset.theme = ['pco-dark', 'pco-light'].includes(t) ? t : 'growpoint'; };
+  applyTheme(urlTheme);
   if (params.get('scale')) document.documentElement.style.setProperty('--user-scale', params.get('scale'));
 
   const $ = (id) => document.getElementById(id);
@@ -91,9 +95,11 @@
     }
 
 
+    if (!urlTheme) applyTheme(display.theme);
     renderRoster();
     renderOrder();
     renderTimers();
+    renderAnnouncements();
     renderStatus();
     tickClock();
     requestAnimationFrame(autoFit);
@@ -285,11 +291,26 @@
     if (total) total.textContent = fmtDuration(state.plan.items.reduce((sum, i) => sum + (i.type === 'header' ? 0 : actualSeconds(i)), 0));
   }
 
+  // Announcements box (Admin → Settings → Backstage), pulled from Planning Center.
+  function renderAnnouncements() {
+    const panel = $('ann-panel');
+    const a = state?.announcements;
+    panel.classList.toggle('hidden', !a?.enabled);
+    if (!a?.enabled) return;
+    const box = $('announcements');
+    if (!a.groups.length) { box.replaceChildren(el('div', { class: 'empty' }, 'No announcements in this plan.')); return; }
+    const showTitles = a.groups.length > 1;
+    box.replaceChildren(...a.groups.map((g) => el('div', { class: 'ann-group' },
+      showTitles ? el('div', { class: 'ann-title' }, g.title) : null,
+      el('ul', {}, g.lines.map((l) => el('li', {}, l))))));
+  }
+
   function renderTimers() {
     const panel = $('timers-panel');
     const box = $('timers');
     box.replaceChildren();
-    document.body.classList.toggle('no-timers', !state?.showTimers);
+    // The right-hand column holds timers and/or announcements.
+    document.body.classList.toggle('no-timers', !state?.showTimers && !state?.announcements?.enabled);
     if (!state?.showTimers) { panel.classList.add('hidden'); return; }
     panel.classList.remove('hidden');
     if (!pp.connected) {

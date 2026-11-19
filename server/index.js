@@ -19,6 +19,7 @@ import * as unifi from './unifi.js';
 import * as osm from './osm.js';
 import * as spotify from './spotify.js';
 import { historyList, historyDetail, historyTrends, historyCsv } from './history.js';
+import { buildAnnouncements, isAnnouncementItem } from './announcements.js';
 import { buildRoster, assignmentChanges, FIELDS, visibilityKey } from './roster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,8 +59,12 @@ function dashboardState() {
   const { display } = db.settings;
   const leaderCats = String(db.settings.pco.leaderNoteCategories || '').split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
   const useNative = db.settings.pco.useNativeLeaders !== false;
+  const ann = db.settings.display.announcements || {};
+  // With the Announcements box on, announcement details move out of the order of service.
+  const moveAnnouncements = ann.enabled && ann.hideInOrder !== false;
   const items = (detail?.items || []).map(({ notes, leaders, ...item }) => ({
     ...item,
+    description: moveAnnouncements && isAnnouncementItem(item) ? null : item.description,
     // Planning Center's own Leader column (people/positions), when it has someone…
     leaders: useNative && leaders?.length ? leaders : [],
     // …otherwise the chosen item-note column as text (e.g. a custom "Lead" column).
@@ -74,6 +79,7 @@ function dashboardState() {
     plan: detail ? { ...detail.plan, items } : null,
     serverTime: Date.now(), // lets dashboards correct for clock drift on the live timer
     sound: db.settings.sound, // which tools the sound desk page shows
+    announcements: { enabled: Boolean(ann.enabled), groups: ann.enabled ? buildAnnouncements(detail, ann) : [] },
     live: live.summary(detail, db),
     teams: withArrivals(roster.teams),
     unifi: unifi.getState(),
@@ -184,8 +190,9 @@ admin.put('/settings', (req, res) => {
     if (body.hyperdeck) Object.assign(s.hyperdeck, body.hyperdeck);
     if (body.osm) Object.assign(s.osm, body.osm);
     if (body.sound) {
-      const allowed = ['level', 'spotify', 'timers', 'recording', 'order', 'roster'];
-      s.sound.tools = (body.sound.tools || []).filter((t) => allowed.includes(t));
+      const allowed = ['level', 'spotify', 'timers', 'recording', 'announcements', 'order', 'roster'];
+      if (body.sound.tools) s.sound.tools = body.sound.tools.filter((t) => allowed.includes(t));
+      if (['growpoint', 'pco-dark', 'pco-light'].includes(body.sound.theme)) s.sound.theme = body.sound.theme;
     }
     if (body.unifi) {
       const { token, hasToken, ...rest } = body.unifi;

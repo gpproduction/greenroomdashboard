@@ -1,0 +1,93 @@
+/* Screen themes for Backstage and Front of House.
+   GrowPoint (default) = the original navy look (no rules here).
+   Choose in Admin → Settings → Screens, or per screen with ?theme=pco-dark | pco-light | growpoint. */
+
+/* ---- Planning Center dark ---- */
+html[data-theme="pco-dark"] { --bg: #1b1b1c; --panel: #232324; --panel-2: #2d2d2f; --line: #39393c;
+  --text: #ededed; --muted: #a3a3a6; --brand: #1D4850; --brand-line: #2f6f7a; --brand-text: #7fc4cc;
+  --accent: #7fc4cc; --ok: #4cc27a; --warn: #f0b13e; --bad: #ff6b6b; }
+html[data-theme="pco-dark"] body { background: var(--bg); color: var(--text); }
+html[data-theme="pco-dark"] .top { background: linear-gradient(90deg, #2c3a2f 0%, #2a3533 55%, #28313a 100%); border-bottom: 1px solid #3a3d3b; }
+html[data-theme="pco-dark"] .logo:not(.hidden) + .heading { border-left-color: rgba(255,255,255,0.15); }
+html[data-theme="pco-dark"] .title { font-weight: 600; }
+html[data-theme="pco-dark"] .plan, html[data-theme="pco-dark"] .countdown .label { color: #b9c2c9; }
+html[data-theme="pco-dark"] .panel, html[data-theme="pco-dark"] .team { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+html[data-theme="pco-dark"] .panel h2 { color: var(--muted); font-weight: 600; }
+html[data-theme="pco-dark"] .team h3 { background: var(--panel-2); color: #d4d6db; border-bottom: 1px solid var(--line); font-weight: 600; }
+html[data-theme="pco-dark"] .avatar { border-radius: 50%; background: #3a3a3d; color: #b6bac2; }
+html[data-theme="pco-dark"] .who .name { font-weight: 600; }
+html[data-theme="pco-dark"] .chip { background: #2d2d2f; border: 1px solid #424245; border-radius: 6px; }
+html[data-theme="pco-dark"] .order li.header { background: #2d2d2f; color: #d4d6db; font-weight: 600; font-size: 0.85rem; }
+html[data-theme="pco-dark"] .order li .key { background: #2f7de1; color: #fff; }
+html[data-theme="pco-dark"] .order li.active { background: #1f3a3f; box-shadow: inset 5px 0 0 #7fc4cc; }
+html[data-theme="pco-dark"] .order li.active .key { background: #2f7de1; color: #fff; }
+html[data-theme="pco-dark"] .order li .desc { color: #b4b8c0; }
+html[data-theme="pco-dark"] .order li .lead .face { border-color: var(--panel); background: #3a3a3d; }
+html[data-theme="pco-dark"] .live-status.on { background: #1f3a3f; border-color: #2f6f7a; }
+html[data-theme="pco-dark"] .status { background: #202021; border-top: 1px solid var(--line); }
+html[data-theme="pco-dark"] .pill { background: #2d2d2f; border-color: #424245; }
+html[data-theme="pco-dark"] .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+html[data-theme="pco-dark"] .heading { border-left-color: rgba(255,255,255,0.15); }
+html[data-theme="pco-dark"] .stats > div, html[data-theme="pco-dark"] .art, html[data-theme="pco-dark"] .ctl, html[data-theme="pco-dark"] .pick select, html[data-theme="pco-dark"] .pick button, html[data-theme="pco-dark"] .bar, html[data-theme="pco-dark"] .progress, html[data-theme="pco-dark"] .rec { background: #2d2d2f; border-color: #424245; }
+
+/* ---- Planning Center light ---- */
+html[data-theme="pco-light"] { --bg: #eef1f3; --panel: #ffffff; --panel-2: #f1f2f4; --line: #e2e5e9;
+  --text: #212529; --muted: #6b7280; --brand: #1D4850; --brand-line: #1D4850; --brand-text: #1D4850;
+  --accent: #1D4850; --ok: #23944d; --warn: #c27c0e; --bad: #d33a3a; }
+html[data-theme="pco-light"] body { background: var(--bg); color: var(--text); }
+html[data-theme="pco-light"] .top { background: linear-gradient(90deg, #c6e8cf 0%, #b6e0d6 45%, #a9d3ec 100%); border-bottom: 0; }
+html[data-theme="pco-light"] .logo { filter: brightness(0) invert(18%) sepia(25%) saturate(1200%) hue-rotate(150deg); }
+html[data-theme="pco-light"] .logo:not(.hidden) + .heading { border-left-color: rgba(0,0,0,0.15); }
+html[data-theme="pco-light"] .title { color: #1f2937; font-weight: 600; }
+html[data-theme="pco-light"] .plan { color: #4b5563; }
+html[data-theme="pco-light"] .clock { color: #1f2937; }
+html[data-theme="pco-light"] .countdown .label { color: #4b5563; }
+html[data-theme="pco-light"] .countdown.live .value { color: #1b7f3f; }
+html[data-theme="pco-light"] .panel, html[data-theme="pco-light"] .team { background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(16,24,40,0.06); }
+html[data-theme="pco-light"] .panel h2 { color: #6b7280; font-weight: 600; }
+html[data-theme="pco-light"] .team h3 { background: #f1f2f4; color: #374151; border-bottom: 1px solid var(--line); font-weight: 600; }
+html[data-theme="pco-light"] .person { border-bottom-color: var(--line); }
+html[data-theme="pco-light"] .avatar { border-radius: 50%; background: #e5e7eb; color: #4b5563; }
+html[data-theme="pco-light"] .person.arrived .avatar { box-shadow: 0 0 0 3px #23944d; }
+html[data-theme="pco-light"] .who .name { color: #111827; font-weight: 600; }
+html[data-theme="pco-light"] .who .pos { color: #6b7280; }
+html[data-theme="pco-light"] .chip { background: #f9fafb; border: 1px solid #d9dde3; color: #111827; border-radius: 6px; }
+html[data-theme="pco-light"] .chip .k { color: #6b7280; }
+html[data-theme="pco-light"] .arrived-tag { background: #e7f6ec; border-color: #9fd8b2; color: #1b7f3f; }
+html[data-theme="pco-light"] .arrived-tag .at { color: #2f6f45; }
+html[data-theme="pco-light"] .who .pos .tag { color: #b45309; }
+html[data-theme="pco-light"] .order li { border-bottom-color: var(--line); color: #111827; }
+html[data-theme="pco-light"] .order li.cols { color: #6b7280; }
+html[data-theme="pco-light"] .order li.header { background: #eef0f2; color: #374151; font-weight: 600; font-size: 0.85rem; }
+html[data-theme="pco-light"] .order li.prepost { color: #374151; }
+html[data-theme="pco-light"] .order li .len { color: #4b5563; }
+html[data-theme="pco-light"] .order li .key { background: #1f6fd1; color: #fff; }
+html[data-theme="pco-light"] .order li.active { background: #e3f0f1; box-shadow: inset 5px 0 0 #1D4850; }
+html[data-theme="pco-light"] .order li.active .key { background: #1f6fd1; color: #fff; }
+html[data-theme="pco-light"] .order li.active .len { color: #4b5563; }
+html[data-theme="pco-light"] .order li.active .desc { color: #374151; }
+html[data-theme="pco-light"] .order li.active .lead { color: #1D4850; }
+html[data-theme="pco-light"] .order li .desc { color: #4b5563; }
+html[data-theme="pco-light"] .order li .lead { color: #1D4850; }
+html[data-theme="pco-light"] .order li .lead .face { border-color: #fff; background: #e5e7eb; color: #4b5563; }
+html[data-theme="pco-light"] .order li .actual.live { color: #111827; }
+html[data-theme="pco-light"] .order li .actual.under { color: #1b7f3f; }
+html[data-theme="pco-light"] .live-status.on { background: #1D4850; color: #fff; border-color: #1D4850; }
+html[data-theme="pco-light"] .timer { border-bottom-color: var(--line); }
+html[data-theme="pco-light"] .timer .time { color: #111827; }
+html[data-theme="pco-light"] .timer.stopped .time { color: #9ca3af; }
+html[data-theme="pco-light"] .timer .name { color: #6b7280; }
+html[data-theme="pco-light"] .status { background: #fff; border-top: 1px solid var(--line); color: #6b7280; }
+html[data-theme="pco-light"] .pill { background: #f9fafb; border-color: #d9dde3; color: #111827; }
+html[data-theme="pco-light"] .pill .pill-label { color: #6b7280; }
+html[data-theme="pco-light"] .pill.on { background: #fdecec; border-color: #f3b4b4; }
+html[data-theme="pco-light"] .pill.on b { color: #c02626; }
+html[data-theme="pco-light"] .card { background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(16,24,40,0.06); }
+html[data-theme="pco-light"] .card h2 { color: #6b7280; }
+html[data-theme="pco-light"] .heading { border-left-color: rgba(0,0,0,0.15); }
+html[data-theme="pco-light"] .sub { color: #4b5563; }
+html[data-theme="pco-light"] .stats > div, html[data-theme="pco-light"] .art, html[data-theme="pco-light"] .ctl, html[data-theme="pco-light"] .pick select, html[data-theme="pco-light"] .pick button, html[data-theme="pco-light"] .bar, html[data-theme="pco-light"] .progress, html[data-theme="pco-light"] .rec { background: #f3f4f6; border-color: #d9dde3; color: #111827; }
+html[data-theme="pco-light"] .np-artist, html[data-theme="pco-light"] .times, html[data-theme="pco-light"] .scale, html[data-theme="pco-light"] .unit, html[data-theme="pco-light"] .src, html[data-theme="pco-light"] .t-name { color: #6b7280; }
+html[data-theme="pco-light"] .unit span:first-child { color: #111827; }
+html[data-theme="pco-light"] .ctl.big { background: #1db954; border-color: #1db954; color: #fff; }
+html[data-theme="pco-light"] .spl { color: #1b7f3f; }

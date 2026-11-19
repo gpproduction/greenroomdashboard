@@ -138,6 +138,18 @@
   // ---- which tools to show ------------------------------------------------------------------
   // Admin → Settings → Front of House, or per computer with ?tools=level,order
   const urlTools = new URLSearchParams(location.search).get('tools');
+  // Theme: ?theme= on the link wins, else Admin → Settings → Front of House.
+  const urlTheme = new URLSearchParams(location.search).get('theme');
+  let theme = 'growpoint';
+  function applyTheme(t) {
+    t = ['pco-dark', 'pco-light'].includes(t) ? t : 'growpoint';
+    document.documentElement.dataset.theme = t;
+    if (t === theme) return;
+    theme = t;
+    // Embedded order of service / mic list follow the same theme.
+    for (const f of document.querySelectorAll('.frame iframe')) f.src = withTheme(f.closest('.frame').dataset.src);
+  }
+  const withTheme = (src) => `${src}&theme=${theme}`;
   let appliedTools = '';
   function applyTools(list) {
     const key = list.join(',');
@@ -151,16 +163,31 @@
       if (card.dataset.src) {
         if (show && !card.querySelector('iframe')) {
           const f = document.createElement('iframe');
-          f.src = card.dataset.src;
+          f.src = withTheme(card.dataset.src);
           f.title = card.dataset.tool;
           card.append(f);
         } else if (!show) card.replaceChildren();
       }
     }
-    const left = ['level', 'spotify', 'timers', 'recording'].some((t) => on.has(t));
+    const left = ['level', 'spotify', 'timers', 'recording', 'announcements'].some((t) => on.has(t));
     const right = ['order', 'roster'].some((t) => on.has(t));
     $('main').className = left && right ? '' : left ? 'only-left' : 'only-right';
     $('main').style.visibility = 'visible';
+  }
+
+  // ---- Announcements ---------------------------------------------------------------------------
+  function renderAnnouncements(a) {
+    const box = $('announcements');
+    if (!a?.enabled) { box.innerHTML = '<div class="msg">Turn on Announcements in Admin → Settings → Backstage.</div>'; return; }
+    if (!a.groups.length) { box.innerHTML = '<div class="msg">No announcements in this plan.</div>'; return; }
+    box.replaceChildren(...a.groups.flatMap((g) => {
+      const parts = [];
+      if (a.groups.length > 1) { const t = document.createElement('div'); t.className = 'ann-title'; t.textContent = g.title; parts.push(t); }
+      const ul = document.createElement('ul');
+      for (const line of g.lines) { const li = document.createElement('li'); li.textContent = line; ul.append(li); }
+      parts.push(ul);
+      return parts;
+    }));
   }
 
   // ---- ProPresenter timers --------------------------------------------------------------------
@@ -222,6 +249,8 @@
         if (bootId && msg.payload.bootId !== bootId) location.reload(); // server updated
         bootId = msg.payload.bootId;
         tz = msg.payload.display?.timezone;
+        applyTheme(urlTheme || msg.payload.sound?.theme);
+        renderAnnouncements(msg.payload.announcements);
         applyTools(urlTools ? urlTools.split(',').map((t) => t.trim()) : msg.payload.sound?.tools || ['level', 'spotify', 'order']);
         const p = msg.payload.plan;
         $('plan-meta').textContent = p ? [p.serviceTypeName, p.dates].filter(Boolean).join(' · ') : '';
