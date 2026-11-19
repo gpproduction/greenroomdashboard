@@ -183,9 +183,17 @@
     box.replaceChildren(...a.groups.flatMap((g) => {
       const parts = [];
       if (a.groups.length > 1) { const t = document.createElement('div'); t.className = 'ann-title'; t.textContent = g.title; parts.push(t); }
-      const ul = document.createElement('ul');
-      for (const line of g.lines) { const li = document.createElement('li'); li.textContent = line; ul.append(li); }
-      parts.push(ul);
+      // Shown as written: plain lines as-is, "-" lines as bullets, blank lines as spacing.
+      for (const l of g.lines) {
+        const d = document.createElement('div');
+        if (l.blank) d.className = 'ann-gap';
+        else {
+          d.className = `ann-line${l.bullet ? ' bullet' : ''}`;
+          d.textContent = l.text;
+          if (l.indent) d.style.marginLeft = `${l.indent * 1.2}rem`;
+        }
+        parts.push(d);
+      }
       return parts;
     }));
   }

@@ -12,16 +12,28 @@ const detail = {
   planNotes: [{ category: 'Announcements', content: '• Baptism sign-ups\n1. Men’s breakfast' }, { category: 'Sound', content: 'Spotify' }],
 };
 
-test('splits bullet lines and strips markers', () => {
-  assert.deepEqual(toLines('- One\n• Two\n\n3) Three\n * Four '), ['One', 'Two', 'Three', 'Four']);
+test('keeps text as written: plain lines, bullets, blank lines, indentation, numbering', () => {
+  const text = 'Say good morning to someone next to you.\n\nNew Here\n- GrowCard \n  - Table in Lobby\n\n\n1. Men’s breakfast\n-NoSpaceStays';
+  assert.deepEqual(toLines(text), [
+    { text: 'Say good morning to someone next to you.', bullet: false, indent: 0 },
+    { blank: true },
+    { text: 'New Here', bullet: false, indent: 0 },
+    { text: 'GrowCard', bullet: true, indent: 0 },
+    { text: 'Table in Lobby', bullet: true, indent: 1 },
+    { blank: true },
+    { text: '1. Men’s breakfast', bullet: false, indent: 0 },
+    { text: '-NoSpaceStays', bullet: false, indent: 0 },
+  ]);
+  assert.deepEqual(toLines('\n\n'), []);
 });
 
 test('collects announcement items (not headers) and matching plan notes', () => {
   assert.equal(isAnnouncementItem(detail.items[0]), false);
   const all = buildAnnouncements(detail, { source: 'both', noteCategory: 'announcements' });
-  assert.deepEqual(all.map((g) => [g.title, g.lines]), [
-    ['Announcements', ['Christmas Decorating', 'Christmas Parade']],
-    ['Announcements', ['Baptism sign-ups', 'Men’s breakfast']],
+  const texts = (g) => g.lines.map((l) => (l.blank ? '' : `${l.bullet ? '•' : ''}${l.text}`));
+  assert.deepEqual(all.map((g) => [g.title, texts(g)]), [
+    ['Announcements', ['•Christmas Decorating', '•Christmas Parade']],
+    ['Announcements', ['•Baptism sign-ups', '1. Men’s breakfast']],
   ]);
   assert.equal(buildAnnouncements(detail, { source: 'items' }).length, 1);
   assert.equal(buildAnnouncements(detail, { source: 'notes' })[0].from, 'note');

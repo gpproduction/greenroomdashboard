@@ -5,12 +5,25 @@
 
 export const isAnnouncementItem = (item) => item.type !== 'header' && /announce/i.test(item.title || '');
 
-/** "- Christmas Decorating\n- Christmas Parade" → ["Christmas Decorating", "Christmas Parade"] */
+/**
+ * Announcement text, kept as written: every line in order, blank lines as spacing,
+ * indentation kept. Lines starting with "-", "•", "*" etc. get a bullet in place of
+ * that character; everything else (headings, details, "1." numbering) is untouched.
+ * → [{ text, bullet, indent } | { blank: true }]
+ */
 export function toLines(text) {
-  return String(text || '')
-    .split(/\r?\n/)
-    .map((l) => l.replace(/^\s*(?:[-–—•*·]|\d+[.)])\s*/, '').trim())
-    .filter(Boolean);
+  const out = [];
+  for (const raw of String(text || '').replace(/\t/g, '    ').split(/\r?\n/)) {
+    if (!raw.trim()) {
+      if (out.length && !out.at(-1).blank) out.push({ blank: true }); // collapse repeats
+      continue;
+    }
+    const indent = Math.min(4, Math.floor((raw.match(/^ */)[0].length) / 2));
+    const m = /^\s*[-–—•*·]\s+(.*)$/.exec(raw);
+    out.push(m ? { text: m[1].trimEnd(), bullet: true, indent } : { text: raw.trim(), bullet: false, indent });
+  }
+  while (out.length && out.at(-1).blank) out.pop(); // no trailing space
+  return out;
 }
 
 /**

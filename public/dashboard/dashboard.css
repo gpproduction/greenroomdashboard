@@ -167,7 +167,11 @@ body.layout-order .roster, body.layout-order .right-col { display: none !importa
 .right-col { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
 body.layout-timers .right-col { flex: 1; }
 .announcements { overflow: hidden; flex: 1 1 auto; min-height: 0; }
-.announcements .ann-group + .ann-group { margin-top: 0.8rem; }
+.announcements .ann-group + .ann-group { margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--line); }
+.announcements .ann-line { font-size: 1.15rem; line-height: 1.35; padding: 0.12rem 0; overflow-wrap: anywhere; }
+.announcements .ann-line.bullet { position: relative; padding-left: 1.1rem; }
+.announcements .ann-line.bullet::before { content: ""; position: absolute; left: 0.15rem; top: 0.65rem; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--accent); }
+.announcements .ann-gap { height: 0.7rem; }
 .announcements .ann-title { font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.3rem; }
 .announcements ul { list-style: none; margin: 0; padding: 0; }
 .announcements li { position: relative; padding: 0.45rem 0 0.45rem 1.1rem; border-bottom: 1px solid var(--line); font-size: 1.15rem; line-height: 1.3; }

@@ -85,7 +85,10 @@ main.only-left .right, main.only-right .left { display: none; }
 .t-row.overrun .t-time { color: var(--bad); }
 
 /* Announcements */
-.announcements ul { list-style: none; margin: 0; padding: 0; }
+.announcements .ann-line { font-size: 1.05rem; line-height: 1.35; padding: 0.1rem 0; }
+.announcements .ann-line.bullet { position: relative; padding-left: 1.1rem; }
+.announcements .ann-line.bullet::before { content: ""; position: absolute; left: 0.15rem; top: 0.6rem; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--brand-text); }
+.announcements .ann-gap { height: 0.6rem; }
 .announcements li { position: relative; padding: 0.4rem 0 0.4rem 1.1rem; border-bottom: 1px solid var(--line); font-size: 1.05rem; }
 .announcements li:last-child { border-bottom: 0; }
 .announcements li::before { content: ""; position: absolute; left: 0.1rem; top: 0.85rem; width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--brand-text); }

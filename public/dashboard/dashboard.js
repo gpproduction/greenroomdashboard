@@ -300,9 +300,12 @@
     const box = $('announcements');
     if (!a.groups.length) { box.replaceChildren(el('div', { class: 'empty' }, 'No announcements in this plan.')); return; }
     const showTitles = a.groups.length > 1;
+    // Shown as written: plain lines as-is, "-" lines as bullets, blank lines as spacing, indentation kept.
     box.replaceChildren(...a.groups.map((g) => el('div', { class: 'ann-group' },
       showTitles ? el('div', { class: 'ann-title' }, g.title) : null,
-      el('ul', {}, g.lines.map((l) => el('li', {}, l))))));
+      g.lines.map((l) => (l.blank
+        ? el('div', { class: 'ann-gap' })
+        : el('div', { class: `ann-line${l.bullet ? ' bullet' : ''}`, style: l.indent ? `margin-left:${l.indent * 1.2}rem` : null }, l.text))))));
   }
 
   function renderTimers() {

@@ -109,7 +109,7 @@ export function planDetail() {
       { id: 'i4', title: 'Second Song', type: 'song', length: 300, sequence: 4, position: 'during', key: 'D',
         leaders: [{ name: 'Jordan Lee', photo: null, personId: 'p2' }, { name: 'Alex Rivera', photo: 'https://avatars.planningcenteronline.com/uploads/demo/p1.png', personId: 'p1' }] },
       { id: 'i5', title: 'Welcome & Announcements', type: 'item', length: 300, sequence: 5, position: 'during', notes: [{ category: 'Lead', content: 'Drew' }],
-        description: 'Baptism Sunday sign-ups close Dec 7\nChristmas Eve services 4:00 & 6:00\nNew here? Stop by the Info Center' },
+        description: '- Christmas Decorating\n  Saturday 9:00 AM, all hands welcome\n- Christmas Parade\n  Meet in the parking lot at 5:30 PM\n\nNew here? Stop by the Info Center' },
       { id: 'i6', title: 'Third Song', type: 'song', length: 330, sequence: 6, position: 'during', key: 'A', notes: [{ category: 'Lead', content: 'Alex' }] },
       { id: 'i7', title: 'Message', type: 'header', length: 0, sequence: 7, position: 'during' },
       { id: 'i8', title: 'Sermon', type: 'item', length: 2100, sequence: 8, position: 'during', notes: [{ category: 'Lead', content: 'Pastor Pat' }] },
