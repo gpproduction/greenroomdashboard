@@ -1,4 +1,4 @@
-# Green Room — Docker / Synology Container Manager setup.
+# Green Room — Docker / Synology Container Manager setup (builds from these files).
 # Works with older Compose versions (Synology Container Manager).
 services:
   greenroom:
@@ -6,9 +6,10 @@ services:
     image: greenroom-dashboard:latest
     container_name: greenroom-dashboard
     restart: unless-stopped
-    ports:
-      # Change the left number if 8080 is already used on the NAS, e.g. "8090:8080".
-      - "8080:8080"
+    # Host networking: Green Room is on port 8080 of the NAS, and can hear
+    # Open Sound Meter's multicast levels (UDP 49007).
+    # To use a different port, add  PORT: "8090"  under environment.
+    network_mode: host
     volumes:
       # Settings, devices and assignments live here (data/db.json). Back this folder up.
       - ./data:/data
