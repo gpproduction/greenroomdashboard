@@ -123,7 +123,7 @@ body.layout-order .roster, body.layout-order .timers { display: none !important;
 .who .name-line { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
 .who .name { font-weight: 700; font-size: 1.4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .arrived-tag {
-  flex: none; display: inline-flex; align-items: center; gap: 0.35rem;
+  flex: none; display: inline-flex; margin-right: 0.45rem; vertical-align: 0.05em; align-items: center; gap: 0.35rem;
   padding: 0.1rem 0.55rem; border-radius: 99px;
   background: rgba(52, 199, 123, 0.16); border: 1px solid rgba(52, 199, 123, 0.55);
   color: #6fe3a5; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em;
@@ -159,7 +159,9 @@ body.layout-order .roster, body.layout-order .timers { display: none !important;
   margin: 0 0 0.6rem;
   font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
 }
-.order { overflow: hidden; container-type: inline-size; /* lets the leader column react to the panel's width */ }
+.order { overflow: hidden; container-type: inline-size; /* lets the leader column react to the panel's width */
+  padding: 0.8rem 0 0.4rem; /* rows and section bands run edge to edge, like Planning Center */ }
+.order .panel-head { padding: 0 1rem 0.4rem; }
 .timers { overflow: hidden; }
 
 /* Timers: own narrow column, name above a big time */
@@ -181,25 +183,29 @@ body.layout-timers .timer .time { font-size: 7rem; }
   /* item | leader | time — one shared grid so every row lines up; the leader
      column is as wide as its longest entry (names stay on one line). */
   list-style: none; margin: 0; padding: 0;
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(6rem, auto) minmax(5rem, auto); column-gap: 1.2rem;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(6rem, auto) minmax(5rem, auto); column-gap: 1.4rem;
 }
+/* Planning Center–style rows: roomy, full-width dividers, leader/time centred against notes */
 .order li {
   grid-column: 1 / -1;
-  display: grid; grid-template-columns: subgrid; align-items: start;
-  padding: 0.45rem 0.6rem; border-radius: 9px; font-size: 1.3rem;
+  display: grid; grid-template-columns: subgrid; align-items: center;
+  padding: 0.75rem 1rem; font-size: 1.3rem;
+  border-bottom: 1px solid var(--line);
 }
-/* Faint dividers between items, like the timers */
-.order li:not(.header):not(.total) { border-bottom: 1px solid var(--line); border-radius: 0; }
-.order li.active:not(.header) { border-radius: 9px; border-bottom-color: transparent; }
+.order li > span:first-child { font-weight: 600; } /* item title */
+.order li.prepost > span:first-child { font-style: italic; font-weight: 500; } /* pre/post-service, as in PCO */
 .order li.cols {
   font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;
-  padding-top: 0; padding-bottom: 0.2rem;
+  padding-top: 0.15rem; padding-bottom: 0.5rem;
 }
+.order li.cols > span:first-child { font-weight: 600; }
 .order li.cols span:last-child { text-align: right; }
+/* Section headers as full-width shaded bands */
 .order li.header {
   display: block; grid-column: 1 / -1;
-  color: var(--accent); font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.08em;
-  margin-top: 0.5rem;
+  background: var(--panel-2); color: var(--text);
+  font-weight: 700; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 0.7rem 1rem;
 }
 .order li .lead { color: var(--brand-text); font-size: 1.1rem; font-weight: 600; white-space: nowrap; max-width: 24rem; overflow: hidden; text-overflow: ellipsis; padding-top: 0.1rem; }
 .order li.active .lead { color: #fff; }
@@ -220,11 +226,14 @@ body.layout-timers .timer .time { font-size: 7rem; }
   .order li .lead, .order li .lead .names { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
 }
 .order li .len { color: var(--muted); font-variant-numeric: tabular-nums; }
-.order li .key { color: var(--warn); font-size: 0.85rem; font-weight: 700; margin-left: 0.45rem; } /* song key in amber */
-.order li.active { background: var(--brand); outline: 1px solid var(--brand-line); font-weight: 650; }
+.order li .key { /* song key: amber round badge (PCO uses a blue one) */
+  display: inline-grid; place-items: center; min-width: 1.75rem; height: 1.75rem; padding: 0 0.3rem; border-radius: 999px;
+  background: var(--warn); color: #241a00; font-size: 0.85rem; font-weight: 800; font-style: normal; margin-left: 0.6rem; vertical-align: 0.12em;
+}
+.order li.active { background: var(--brand); box-shadow: inset 5px 0 0 var(--brand-text); }
 .order li.active .len { color: #c3e3e7; }
-.order li.active .key { color: #ffd27a; }
-.order li .desc { display: block; color: var(--muted); font-size: 0.95rem; font-weight: 450; white-space: pre-line; margin-top: 0.15rem; line-height: 1.35; }
+.order li.active .key { background: #ffd27a; }
+.order li .desc { display: block; color: #b9c0cf; font-size: 0.95rem; font-weight: 400; font-style: normal; white-space: pre-line; margin-top: 0.45rem; line-height: 1.45; }
 .order li.active .desc { color: #d5ecef; }
 .order li .timing { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; }
 .order li .actual { font-weight: 700; }
@@ -233,7 +242,7 @@ body.layout-timers .timer .time { font-size: 7rem; }
 .order li .actual.live { font-size: 1.5rem; color: #fff; }
 .order li .actual.live.over { color: var(--warn); }
 .order li .timing .len { font-size: 0.9rem; }
-.order li.total { margin-top: 0.5rem; border-top: 1px solid var(--line); border-radius: 0; padding-top: 0.5rem; color: var(--muted); font-weight: 600; }
+.order li.total { border-bottom: 0; color: var(--muted); font-weight: 600; }
 
 .panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.6rem; }
 .live-status { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }

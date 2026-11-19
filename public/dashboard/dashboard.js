@@ -140,11 +140,11 @@
         members.map((m) => el('div', { class: 'person' + (m.status === 'U' ? ' unconfirmed' : '') + (m.arrivedAt ? ' arrived' : '') },
           avatar(m),
           el('div', { class: 'who' },
-            el('div', { class: 'name-line' },
-              el('span', { class: 'name' }, m.name),
-              // Badged in through UniFi Access today
-              m.arrivedAt ? el('span', { class: 'arrived-tag' }, '✓ Arrived', el('span', { class: 'at' }, fmtTime(new Date(m.arrivedAt).toISOString()))) : null),
-            el('div', { class: 'pos' }, m.positions.join(', '), m.status === 'U' ? el('span', { class: 'tag' }, 'unconfirmed') : null)),
+            el('div', { class: 'name-line' }, el('span', { class: 'name' }, m.name)),
+            el('div', { class: 'pos' },
+              // Badged in through UniFi Access today (on the second line so the name gets the full width)
+              m.arrivedAt ? el('span', { class: 'arrived-tag' }, '✓ Arrived', el('span', { class: 'at' }, fmtTime(new Date(m.arrivedAt).toISOString()))) : null,
+              m.positions.join(', '), m.status === 'U' ? el('span', { class: 'tag' }, 'unconfirmed') : null)),
           // "Other" (acoustic pack, violin mic…) shows as a plain chip with just its name.
           el('div', { class: 'devices' }, chip('Mic', m.mic), chip('IEM', m.iem), chip('', m.other)),
         )),
