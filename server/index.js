@@ -62,9 +62,16 @@ function dashboardState() {
   const ann = db.settings.display.announcements || {};
   // With the Announcements box on, announcement details move out of the order of service.
   const moveAnnouncements = ann.enabled && ann.hideInOrder !== false;
+  const songCfg = display.songNotes || {};
+  const songCats = String(songCfg.noteCategories || '').split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
   const items = (detail?.items || []).map(({ notes, leaders, ...item }) => ({
     ...item,
     description: moveAnnouncements && isAnnouncementItem(item) ? null : item.description,
+    // Song notes ("Tag the bridge 2x"): the song's description plus any chosen item-note columns.
+    songNote: songCfg.enabled !== false && item.type === 'song'
+      ? [item.description, ...(notes || []).filter((n) => songCats.includes(String(n.category).toLowerCase())).map((n) => n.content)]
+        .map((t) => String(t || '').trim()).filter(Boolean).join('\n') || null
+      : null,
     // Planning Center's own Leader column (people/positions), when it has someone…
     leaders: useNative && leaders?.length ? leaders : [],
     // …otherwise the chosen item-note column as text (e.g. a custom "Lead" column).

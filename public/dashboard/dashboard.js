@@ -183,7 +183,7 @@
 
   function showDescription(item) {
     const mode = state.display.itemDescriptions || 'announcements';
-    if (!item.description || mode === 'none') return false;
+    if (!item.description || mode === 'none' || item.songNote) return false; // songs show it as a song note instead
     return mode === 'all' || /announce/i.test(item.title);
   }
 
@@ -263,7 +263,8 @@
       list.append(el('li', { class: [isActive ? 'active' : '', isLive ? 'is-live' : '', item.position !== 'during' ? 'prepost' : ''].join(' ') },
         el('span', {},
           item.title, item.key ? el('span', { class: 'key' }, item.key) : null,
-          showDescription(item) ? el('span', { class: 'desc' }, item.description) : null),
+          showDescription(item) ? el('span', { class: 'desc' }, item.description) : null,
+          item.songNote ? el('span', { class: 'song-note' }, el('b', {}, 'Note'), el('span', {}, item.songNote)) : null),
         leaderCell(item),
         timing));
     }
@@ -425,7 +426,33 @@
       box.replaceChildren(el('div', { class: 'label' }, 'Next'), el('div', { class: 'value' }, `${new Date(next.startsAt).toLocaleDateString('en-US', { weekday: 'short', timeZone: tz() })} ${fmtTime(next.startsAt)}`));
     } else box.replaceChildren();
   }
-  setInterval(tickClock, 1000);
+
+  // Service starting alarm: a flashing countdown bar for the last few minutes before each service time.
+  // Add ?alarm=preview to a Backstage link to see it without waiting for a service.
+  const alarmPreview = params.get('alarm') === 'preview';
+  const previewStart = Date.now() + 2 * 60_000;
+  function tickAlarm() {
+    const bar = $('start-alarm');
+    const cfg = state?.display?.startAlarm || {};
+    const lead = (Number(cfg.minutes) || 2) * 60_000;
+    const now = serverNow();
+    let next = (state?.plan?.times || []).filter((t) => t.type === 'service')
+      .find((t) => Date.parse(t.startsAt) > now && Date.parse(t.startsAt) - now <= lead);
+    if (alarmPreview && !next) next = { startsAt: new Date(previewStart > now ? previewStart : now + lead).toISOString(), type: 'service', name: 'Preview' };
+    const show = Boolean(next && (cfg.enabled !== false || alarmPreview));
+    if (bar.classList.contains('hidden') === show) {
+      bar.classList.toggle('hidden', !show);
+      requestAnimationFrame(autoFit); // the bar takes room from the panels below: re-fit the text
+    }
+    if (!show) return;
+    const left = Math.max(0, Math.ceil((Date.parse(next.startsAt) - now) / 1000));
+    const set = (id, text) => { if ($(id).textContent !== text) $(id).textContent = text; };
+    set('alarm-title', cfg.title ?? 'Service starts in');
+    set('alarm-time', `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);
+    set('alarm-msg', [next.name === 'Preview' ? 'Preview' : `${next.name || fmtTime(next.startsAt)} service`, cfg.message ?? 'Worship team to the stage'].filter(Boolean).join(' · '));
+  }
+
+  setInterval(() => { tickClock(); tickAlarm(); }, 1000);
 
   // ---- live connection -------------------------------------------------------
   function onState(s) {

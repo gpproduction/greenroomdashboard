@@ -700,6 +700,8 @@
     const themeSelect = (obj, key) => el('select', { onchange: (e) => { obj[key] = e.target.value; } },
       [['growpoint', 'GrowPoint (navy)'], ['pco-dark', 'Planning Center Dark'], ['pco-light', 'Planning Center Light']].map(([v, t]) => el('option', { value: v, selected: (obj[key] || 'growpoint') === v }, t)));
     s.display.announcements ??= { enabled: false, source: 'both', noteCategory: 'Announcements', hideInOrder: true };
+    s.display.songNotes ??= { enabled: true, noteCategories: '' };
+    s.display.startAlarm ??= { enabled: true, minutes: 2, title: 'Service starts in', message: 'Worship team to the stage' };
 
     async function saveSection(section) {
       try {
@@ -953,6 +955,18 @@
         field('Show item descriptions from Planning Center', el('select', { onchange: (e) => { s.display.itemDescriptions = e.target.value; } },
           [['announcements', 'Announcements only'], ['all', 'All items'], ['none', 'None']].map(([v, t]) => el('option', { value: v, selected: (s.display.itemDescriptions || 'announcements') === v }, t))),
           '“Announcements only” shows the description on items with “announcement” in the title.')),
+      el('h3', {}, 'Song notes'),
+      el('p', { class: 'help' }, 'Arrangement reminders (“Tag the bridge 2x”) shown in amber under each song. They come from the song item’s description in Planning Center, plus any item-note columns you list below.'),
+      check('Show song notes', s.display.songNotes, 'enabled'),
+      el('div', { class: 'grid2' },
+        field('Also include these item-note columns', el('input', { value: s.display.songNotes.noteCategories || '', placeholder: 'e.g. Vocals, Band', oninput: (e) => { s.display.songNotes.noteCategories = e.target.value; } }), 'Comma-separated. Leave empty for the description only.')),
+      el('h3', {}, 'Service starting alarm'),
+      el('p', { class: 'help' }, 'A flashing red bar across the top of Backstage counting down the last few minutes before each service time in Planning Center (not rehearsals). To see it any time, open ', el('code', {}, `${origin}/backstage?alarm=preview`), '.'),
+      check('Show the service starting alarm', s.display.startAlarm, 'enabled'),
+      el('div', { class: 'grid2' },
+        field('Minutes before the service', el('input', { type: 'number', min: 1, max: 15, value: s.display.startAlarm.minutes ?? 2, oninput: (e) => { s.display.startAlarm.minutes = Number(e.target.value) || 2; } })),
+        field('Heading', el('input', { value: s.display.startAlarm.title ?? 'Service starts in', oninput: (e) => { s.display.startAlarm.title = e.target.value; } }), 'Shown before the countdown.'),
+        field('Message', el('input', { value: s.display.startAlarm.message ?? '', oninput: (e) => { s.display.startAlarm.message = e.target.value; } }), 'Shown after the service time. Leave empty for none.')),
       el('h3', {}, 'Announcements'),
       el('p', { class: 'help' }, 'An Announcements box (under the timers on Backstage, and a tool on Front of House) pulled from Planning Center, so a long list doesn’t have to crowd the order of service. It uses the description of any item with “announcement” in its title, and/or plan notes in the category below. Each line becomes a bullet.'),
       check('Show the Announcements box', s.display.announcements, 'enabled'),

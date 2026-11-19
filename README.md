@@ -16,6 +16,8 @@ A self-hosted mic and in-ear-monitor assignment board for church production team
 - **History** (Admin → History): every recorded service, with planned vs actual per item for each service time, trends for recurring items over recent weeks, and CSV export for Excel or Google Sheets. A copy of each plan is saved with its times, so history survives later edits in Planning Center.
 - **Production test mode** (Admin → Live): click through ProPresenter outside service times to check item timing. It's recorded separately from real services.
 - **Announcements**: the description from Planning Center is shown under announcement items (configurable).
+- **Song notes**: a song's Planning Center description ("Tag the bridge 2x") shows in amber under the song, plus any item-note columns you choose.
+- **Service starting alarm**: a flashing red bar across the top of Backstage counts down the last 2 minutes (configurable) before each service time. Preview it with `/backstage?alarm=preview`.
 - **Dashboard**: a full-screen page for Chrome on a greenroom TV. It updates live over a WebSocket, reconnects by itself, and reloads itself when the server is updated.
 
 ```

@@ -252,6 +252,24 @@ body.layout-timers .timer .time { font-size: 7rem; }
 .order li.active .key { background: #ffd27a; }
 .order li .desc { display: block; color: #b9c0cf; font-size: 0.95rem; font-weight: 400; font-style: normal; white-space: pre-line; margin-top: 0.45rem; line-height: 1.45; }
 .order li.active .desc { color: #d5ecef; }
+/* Song notes: arrangement reminders from the song's Planning Center description */
+.order li .song-note { display: flex; align-items: baseline; gap: 0.55rem; margin-top: 0.4rem; font-size: 1rem; font-weight: 600; font-style: normal; color: var(--warn); white-space: pre-line; line-height: 1.35; }
+.order li .song-note b { flex: none; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.12rem 0.45rem; border-radius: 4px; background: var(--warn); color: #241a00; }
+.order li.active .song-note { color: #ffd27a; }
+html[data-theme="pco-light"] .order li.active .song-note { color: var(--warn); }
+body.embed .start-alarm { display: none !important; }
+
+/* Service starting alarm bar ------------------------------------------------------ */
+.start-alarm {
+  display: flex; align-items: center; justify-content: center; gap: 1.6rem;
+  padding: 0.7rem 1.4rem; background: #8e1c1c; color: #fff;
+  animation: alarm-flash 1s steps(1, end) infinite;
+}
+.alarm-time { font-size: 3.2rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.alarm-title { font-size: 2.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1; }
+.alarm-msg { font-size: 1.25rem; font-weight: 600; opacity: 0.95; }
+@keyframes alarm-flash { 50% { background: #c62828; } }
+@media (prefers-reduced-motion: reduce) { .start-alarm { animation: none; } }
 .order li .timing { display: flex; flex-direction: column; align-items: flex-end; font-variant-numeric: tabular-nums; }
 .order li .actual { font-weight: 700; }
 .order li .actual.under { color: var(--ok); }
@@ -326,4 +344,8 @@ body.layout-timers .timer .time { font-size: 7rem; }
   main { grid-template-columns: 1fr !important; padding: 0.7rem 1rem; }
   .status { flex-wrap: wrap; padding: 0.5rem 1rem; }
   .status .conns { flex-wrap: wrap; gap: 0.6rem 1rem; }
+  .start-alarm { flex-wrap: wrap; gap: 0.3rem 1rem; padding: 0.6rem 1rem; }
+  .alarm-time { font-size: 2rem; }
+  .alarm-title { font-size: 1.5rem; }
+  .alarm-msg { flex-basis: 100%; text-align: center; font-size: 1rem; }
 }
