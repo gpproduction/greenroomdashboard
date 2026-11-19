@@ -153,6 +153,29 @@ td.conflict select { border-color: var(--bad); }
 .small-check { font-size: 0.85rem; color: var(--muted); margin-right: 0.6rem; }
 .steps { padding-left: 1.2rem; margin: 0 0 0.6rem; }
 .steps li { margin-bottom: 0.25rem; }
+/* Settings: side menu + one page at a time */
+.settings-layout { display: grid; grid-template-columns: 13rem minmax(0, 1fr); gap: 1.2rem; align-items: start; }
+.settings-nav { position: sticky; top: 4.2rem; display: flex; flex-direction: column; gap: 0.9rem; }
+.nav-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 0.25rem 0.6rem; }
+.settings-nav button { display: flex; align-items: center; gap: 0.55rem; width: 100%; border: 0; background: transparent; padding: 0.4rem 0.6rem; border-radius: 8px; text-align: left; }
+.settings-nav button:hover { background: var(--panel); }
+.settings-nav button.active { background: var(--panel); box-shadow: inset 3px 0 0 var(--accent); font-weight: 650; }
+.sdot { width: 0.5rem; height: 0.5rem; border-radius: 50%; flex: none; background: transparent; }
+.sdot.on { background: var(--ok); }
+.sdot.bad { background: var(--bad); }
+.sdot.off { background: var(--line); }
+.settings-content .section { margin-bottom: 0; }
+.tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.6rem; }
+.tool { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.7rem 0.8rem; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.tool:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.tool span { display: flex; flex-direction: column; }
+@media (max-width: 760px) {
+  .settings-layout { grid-template-columns: 1fr; }
+  .settings-nav { position: static; flex-direction: row; overflow-x: auto; gap: 0.4rem; }
+  .nav-group { display: flex; gap: 0.2rem; align-items: center; }
+  .nav-title { display: none; }
+  .settings-nav button { white-space: nowrap; }
+}
 .show-cell { width: 2.5rem; text-align: center; }
 .arrived-note { color: var(--ok); font-size: 0.8rem; font-weight: 600; }
 

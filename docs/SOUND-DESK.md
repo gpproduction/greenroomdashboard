@@ -10,6 +10,20 @@
 
 To save it as its own app: in Chrome, open the **⋮ menu**, choose **Cast, save, and share**, then **Install page as app…**.
 
+## Choosing the tools
+
+Go to **Admin → Settings → Sound desk** and tick what you want:
+- **Level meter**
+- **Spotify**
+- **ProPresenter timers**
+- **Recording & stream** (HyperDeck and OBS)
+- **Order of service**
+- **Mic & IEM assignments**
+
+The small tools stack on the left. The order of service and the mic list fill the right.
+
+To give one computer a different set, use a link such as `/sound/?tools=level,spotify,order`.
+
 ---
 
 ## Open Sound Meter (v1.4.x)

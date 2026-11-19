@@ -53,6 +53,8 @@ function defaults() {
       unifi: { enabled: false, host: '', port: 12445, token: '', leadMinutes: 60 }, // UniFi Access developer API; arrivals count from leadMinutes before today's first rehearsal/service
       osm: { enabled: false, source: '', curve: 'A', time: 'Slow', offset: 0, leqMinutes: 15, warn: 95, alarm: 100 }, // Open Sound Meter levels
       spotify: { clientId: '', refreshToken: '' }, // Spotify Web API (PKCE)
+      // Sound desk page tools, in display order: level | spotify | timers | recording | order | roster
+      sound: { tools: ['level', 'spotify', 'order'] },
       admin: { passwordHash: null },
     },
     devices: [], // { id, type: 'mic'|'iem'|'other', name, channel, frequency, kind, notes, active, linkedId }

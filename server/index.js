@@ -69,6 +69,7 @@ function dashboardState() {
     showTimers: display.showTimers && (db.settings.propresenter.enabled || pco.isDemo()),
     plan: detail ? { ...detail.plan, items } : null,
     serverTime: Date.now(), // lets dashboards correct for clock drift on the live timer
+    sound: db.settings.sound, // which tools the sound desk page shows
     live: live.summary(detail, db),
     teams: withArrivals(roster.teams),
     unifi: unifi.getState(),
@@ -173,6 +174,10 @@ admin.put('/settings', (req, res) => {
     if (body.live) Object.assign(s.live, body.live);
     if (body.hyperdeck) Object.assign(s.hyperdeck, body.hyperdeck);
     if (body.osm) Object.assign(s.osm, body.osm);
+    if (body.sound) {
+      const allowed = ['level', 'spotify', 'timers', 'recording', 'order', 'roster'];
+      s.sound.tools = (body.sound.tools || []).filter((t) => allowed.includes(t));
+    }
     if (body.unifi) {
       const { token, hasToken, ...rest } = body.unifi;
       Object.assign(s.unifi, rest);

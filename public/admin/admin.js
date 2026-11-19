@@ -95,11 +95,12 @@
     livePoll = null;
     for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('active', b.dataset.tab === tab);
     for (const name of Object.keys(renderers)) $(`tab-${name}`).classList.toggle('hidden', name !== tab);
-    location.hash = tab;
+    location.hash = tab === 'settings' ? `settings/${settingsPage}` : tab;
     renderers[tab]();
   }
 
   let settings = null;
+  let settingsPage = (location.hash.split('/')[1] || 'pco'); // which Settings page is open
   // Show times in the church's time zone (Settings → Dashboard display), not the browser's.
   const churchTz = () => {
     const tz = settings?.display?.timezone;
@@ -111,7 +112,7 @@
     settings = await api('/api/admin/settings');
     api('/api/health').then((h) => { $('version').textContent = `v${h.version}${h.commit ? ` · ${h.commit}` : ''}`; }).catch(() => {});
     $('demo-note').classList.toggle('hidden', !settings.demo);
-    const fromHash = location.hash.slice(1);
+    const fromHash = location.hash.slice(1).split('/')[0]; // e.g. #settings/osm → settings
     switchTab(renderers[fromHash] ? fromHash : (settings.pco.hasSecret || settings.pco.envCredentials || settings.demo ? 'assign' : 'settings'));
   }
 
@@ -798,7 +799,7 @@
         el('div', { class: 'help' }, 'The dashboard is dark, so use a white or light logo on a transparent background (PNG or SVG).'),
         logoInput));
     const displaySection = el('div', { class: 'section' },
-      el('h2', {}, 'Dashboard display'),
+      el('h2', {}, 'Dashboard'),
       el('p', { class: 'help' }, 'The header greets the room with “Good Morning”, “Good Afternoon” or “Good Evening” based on the time zone below.'),
       logoBox,
       check('Show the logo', s.display, 'showLogo'),
@@ -819,7 +820,6 @@
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=timers`), ' — big timers only (stage/greenroom clock)'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=roster`), ' — mic/IEM list only'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?layout=order`), ' — order of service only'),
-        el('li', {}, el('code', {}, `${origin}/sound/`), ' — sound desk: level meter, Spotify and order of service'),
         el('li', {}, el('code', {}, `${origin}/dashboard/?teams=Worship Team`), ' — only certain teams (comma-separated)'),
         el('li', {}, 'Add ', el('code', {}, '&scale=1.3'), ' to make text larger on a distant TV.')),
     );
@@ -1037,7 +1037,74 @@
           : el('p', { class: 'help' }, 'Automatic updates aren’t set up on this server yet. See docs/AUTO-UPDATE.md.'));
     }).catch(() => {});
 
-    root.replaceChildren(pcoSection, ppSection, hdSection, obsSection, unifiSection, osmSection, spSection, liveSection, displaySection, updSection, pwSection);
+    // Sound desk ------------------------------------------------------------------------------
+    const TOOLS = [
+      ['level', 'Level meter', 'Live SPL, Leq and max from Open Sound Meter'],
+      ['spotify', 'Spotify', 'Now playing, play/pause/skip, volume, playlists'],
+      ['timers', 'ProPresenter timers', 'The same timers as the dashboard'],
+      ['recording', 'Recording & stream', 'HyperDeck timecode, OBS stream and record time'],
+      ['order', 'Order of service', 'Leaders, keys and live item timing'],
+      ['roster', 'Mic & IEM assignments', 'Who has which mic, IEM and other device'],
+    ];
+    const chosenTools = new Set(s.sound?.tools || ['level', 'spotify', 'order']);
+    const soundSection = el('div', { class: 'section' },
+      el('h2', {}, 'Sound desk'),
+      el('p', { class: 'help' }, 'Choose the tools shown on the sound desk page. Small tools (level, Spotify, timers, recording) stack on the left; the order of service and mic list fill the right.'),
+      el('div', { class: 'tool-grid' }, TOOLS.map(([key, name, desc]) => el('label', { class: 'tool' },
+        el('input', { type: 'checkbox', checked: chosenTools.has(key), onchange: (e) => { if (e.target.checked) chosenTools.add(key); else chosenTools.delete(key); } }),
+        el('span', {}, el('strong', {}, name), el('span', { class: 'help' }, desc))))),
+      el('div', { class: 'row', style: 'margin-top:0.8rem' },
+        el('button', {
+          class: 'primary',
+          onclick: async () => {
+            s.sound = { tools: TOOLS.map(([k]) => k).filter((k) => chosenTools.has(k)) };
+            await saveSection('sound');
+          },
+        }, 'Save sound desk tools'),
+        el('a', { href: '/sound/', target: '_blank', class: 'btn' }, 'Open sound desk ↗')),
+      el('p', { class: 'help', style: 'margin-top:0.8rem' }, 'One computer can show a different set with a link, e.g. ', el('code', {}, `${origin}/sound/?tools=level,order`), '. Open Sound Meter and Spotify are set up under Connections.'));
+
+    // Settings navigation: one page at a time, grouped, with live status dots -----------------
+    const PAGES = [
+      ['Service', [['pco', 'Planning Center', pcoSection], ['live', 'Live timing', liveSection]]],
+      ['Screens', [['dashboard', 'Dashboard', displaySection], ['sound', 'Sound desk', soundSection]]],
+      ['Connections', [['propresenter', 'ProPresenter', ppSection], ['hyperdeck', 'HyperDeck', hdSection], ['obs', 'OBS', obsSection], ['unifi', 'UniFi Access', unifiSection], ['osm', 'Open Sound Meter', osmSection], ['spotify', 'Spotify', spSection]]],
+      ['System', [['updates', 'Updates', updSection], ['password', 'Password', pwSection]]],
+    ];
+    const allPages = PAGES.flatMap(([, list]) => list);
+    const content = el('div', { class: 'settings-content' });
+    const navButtons = new Map();
+    const show = (key) => {
+      const page = allPages.find(([k]) => k === key) || allPages[0];
+      settingsPage = page[0];
+      history.replaceState(null, '', `#settings/${page[0]}`);
+      for (const [k, b] of navButtons) b.classList.toggle('active', k === page[0]);
+      content.replaceChildren(page[2]);
+      window.scrollTo(0, 0);
+    };
+    const nav = el('nav', { class: 'settings-nav' }, PAGES.map(([group, list]) => el('div', { class: 'nav-group' },
+      el('div', { class: 'nav-title' }, group),
+      list.map(([key, label]) => {
+        const b = el('button', { onclick: () => show(key) }, el('i', { class: 'sdot' }), el('span', {}, label));
+        navButtons.set(key, b);
+        return b;
+      }))));
+    root.replaceChildren(el('div', { class: 'settings-layout' }, nav, content));
+    show(settingsPage);
+
+    // Status dots: green = connected, red = turned on but not connected, grey = off.
+    fetch('/api/dashboard').then((r) => r.json()).then((d) => {
+      const st = {
+        pco: d.pco?.ok ? 'on' : 'bad',
+        propresenter: !settings.propresenter?.enabled && !settings.demo ? 'off' : d.propresenter?.connected ? 'on' : 'bad',
+        hyperdeck: !d.media?.hyperdeck?.enabled ? 'off' : d.media.hyperdeck.connected ? 'on' : 'bad',
+        obs: !d.media?.obs?.enabled ? 'off' : d.media.obs.connected ? 'on' : 'bad',
+        unifi: !d.unifi?.enabled ? 'off' : d.unifi.connected ? 'on' : 'bad',
+        osm: !d.osm?.enabled ? 'off' : d.osm.connected ? 'on' : 'bad',
+        spotify: !d.spotify?.configured ? 'off' : d.spotify.connected ? 'on' : 'bad',
+      };
+      for (const [k, b] of navButtons) b.querySelector('.sdot').className = `sdot ${st[k] || 'none'}`;
+    }).catch(() => {});
     if (s.pco.hasSecret || s.pco.envCredentials || s.demo) loadServiceTypes();
     loadPlanChoices();
     loadLeaderColumns();

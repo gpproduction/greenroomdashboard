@@ -48,7 +48,9 @@
     $('mark-warn').style.left = `${pct(o.warn || 95)}%`;
     $('mark-alarm').style.left = `${pct(o.alarm || 100)}%`;
     const live = o.connected && o.spl != null;
-    card.className = `card meter ${live ? level(o.spl, o) : 'off'}`;
+    // Toggle only the level classes (don't overwrite "tool"/"hidden" used by the tool picker).
+    const lvl = live ? level(o.spl, o) : 'off';
+    for (const c of ['warn', 'alarm', 'off']) card.classList.toggle(c, c === lvl);
     $('spl').textContent = live ? fmt1(o.spl) : '--.-';
     $('bar-fill').style.width = live ? `${pct(o.fast ?? o.spl)}%` : '0';
     for (const [id, v] of [['leq', o.leq], ['leq1', o.leq1], ['max1', o.max1]]) {
@@ -133,6 +135,81 @@
   }
   $('sp-devices').addEventListener('focus', loadPickers);
 
+  // ---- which tools to show ------------------------------------------------------------------
+  // Admin → Settings → Sound desk, or per computer with ?tools=level,order
+  const urlTools = new URLSearchParams(location.search).get('tools');
+  let appliedTools = '';
+  function applyTools(list) {
+    const key = list.join(',');
+    if (key === appliedTools) return;
+    appliedTools = key;
+    const on = new Set(list);
+    for (const card of document.querySelectorAll('.tool')) {
+      const show = on.has(card.dataset.tool);
+      card.classList.toggle('hidden', !show);
+      // Embedded dashboard views load only when shown.
+      if (card.dataset.src) {
+        if (show && !card.querySelector('iframe')) {
+          const f = document.createElement('iframe');
+          f.src = card.dataset.src;
+          f.title = card.dataset.tool;
+          card.append(f);
+        } else if (!show) card.replaceChildren();
+      }
+    }
+    const left = ['level', 'spotify', 'timers', 'recording'].some((t) => on.has(t));
+    const right = ['order', 'roster'].some((t) => on.has(t));
+    $('main').className = left && right ? '' : left ? 'only-left' : 'only-right';
+    $('main').style.visibility = 'visible';
+  }
+
+  // ---- ProPresenter timers --------------------------------------------------------------------
+  function renderTimers(pp) {
+    const box = $('timers');
+    if (!pp?.connected) { box.innerHTML = '<div class="msg">ProPresenter not connected</div>'; return; }
+    if (!pp.timers?.length) { box.innerHTML = '<div class="msg">No timers</div>'; return; }
+    box.replaceChildren(...pp.timers.map((t) => {
+      const neg = String(t.time || '').startsWith('-');
+      const [h, m, s] = String(t.time || '0:0:0').replace('-', '').split(':').map(Number);
+      const secs = (h * 3600 + m * 60 + s) * (neg ? -1 : 1);
+      const txt = (neg ? '-' : '') + (h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`);
+      const cls = secs < 0 || /overr/.test(t.state || '') ? 'overrun' : t.state !== 'running' ? 'stopped' : secs <= 60 ? 'warning' : '';
+      const row = document.createElement('div');
+      row.className = `t-row ${cls}`;
+      row.innerHTML = '<span class="t-name"></span><span class="t-time"></span>';
+      row.firstChild.textContent = t.name;
+      row.lastChild.textContent = txt;
+      return row;
+    }));
+  }
+
+  // ---- HyperDeck / OBS ------------------------------------------------------------------------
+  function renderRecording(media) {
+    const pills = [];
+    const pill = (label, cls, word, tc) => {
+      const p = document.createElement('span');
+      p.className = `rec ${cls}`;
+      p.innerHTML = '<i class="dot"></i><span class="lbl"></span><b></b><span class="tc"></span>';
+      p.querySelector('.lbl').textContent = label;
+      p.querySelector('b').textContent = word;
+      p.querySelector('.tc').textContent = tc || '';
+      return p;
+    };
+    const obsTime = (tc) => (tc ? tc.split('.')[0].replace(/^00:/, '') : '');
+    const h = media?.hyperdeck;
+    if (h?.enabled) pills.push(!h.connected ? pill('HyperDeck', 'offline', 'Offline') : h.status === 'record' ? pill('HyperDeck', 'on', 'REC', h.timecode) : pill('HyperDeck', '', h.status === 'play' ? 'PLAY' : 'Stopped', h.timecode));
+    const o = media?.obs;
+    if (o?.enabled) {
+      if (!o.connected) pills.push(pill('OBS', 'offline', 'Offline'));
+      else {
+        pills.push(o.stream?.reconnecting ? pill('Stream', 'warn', 'RECONNECTING', obsTime(o.stream.timecode)) : o.stream?.active ? pill('Stream', 'on', 'LIVE', obsTime(o.stream.timecode)) : pill('Stream', '', 'Off'));
+        pills.push(o.record?.paused ? pill('Record', 'warn', 'PAUSED', obsTime(o.record.timecode)) : o.record?.active ? pill('Record', 'on', 'REC', obsTime(o.record.timecode)) : pill('Record', '', 'Off'));
+      }
+    }
+    if (!pills.length) { $('recording').innerHTML = '<div class="msg">HyperDeck and OBS aren’t set up (Admin → Settings → Connections).</div>'; return; }
+    $('recording').replaceChildren(...pills);
+  }
+
   // ---- live connection ---------------------------------------------------------------------
   let retry = 1000;
   let pickersLoaded = false;
@@ -145,10 +222,13 @@
         if (bootId && msg.payload.bootId !== bootId) location.reload(); // server updated
         bootId = msg.payload.bootId;
         tz = msg.payload.display?.timezone;
+        applyTools(urlTools ? urlTools.split(',').map((t) => t.trim()) : msg.payload.sound?.tools || ['level', 'spotify', 'order']);
         const p = msg.payload.plan;
         $('plan-meta').textContent = p ? [p.serviceTypeName, p.dates].filter(Boolean).join(' · ') : '';
       }
       if (msg.type === 'osm') { osm = msg.payload; renderMeter(); }
+      if (msg.type === 'propresenter') renderTimers(msg.payload);
+      if (msg.type === 'media') renderRecording(msg.payload);
       if (msg.type === 'spotify') {
         sp = msg.payload;
         renderSpotify();

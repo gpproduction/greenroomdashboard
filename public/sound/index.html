@@ -19,10 +19,10 @@
     <div class="clock" id="clock"></div>
   </header>
 
-  <main>
-    <div class="left">
+  <main id="main" style="visibility:hidden">
+    <div class="left" id="left">
       <!-- Open Sound Meter -->
-      <section class="card meter" id="meter">
+      <section class="card meter tool" data-tool="level" id="meter">
         <div class="card-head"><h2>Level</h2><span class="src" id="meter-src">Open Sound Meter</span></div>
         <div class="spl-row">
           <div class="spl" id="spl">--.-</div>
@@ -39,7 +39,7 @@
       </section>
 
       <!-- Spotify -->
-      <section class="card spotify" id="spotify">
+      <section class="card spotify tool" data-tool="spotify" id="spotify">
         <div class="card-head"><h2>Spotify</h2><span class="src" id="sp-device"></span></div>
         <div class="np">
           <div class="art" id="sp-art"></div>
@@ -63,12 +63,25 @@
         </div>
         <div class="msg" id="sp-msg"></div>
       </section>
+
+      <!-- ProPresenter timers -->
+      <section class="card timers tool" data-tool="timers">
+        <div class="card-head"><h2>Timers</h2></div>
+        <div id="timers"></div>
+      </section>
+
+      <!-- HyperDeck / OBS -->
+      <section class="card recording tool" data-tool="recording">
+        <div class="card-head"><h2>Recording &amp; stream</h2></div>
+        <div id="recording"></div>
+      </section>
     </div>
 
-    <!-- Order of service: the dashboard's own view, embedded -->
-    <section class="card order">
-      <iframe id="order" title="Order of service" src="/dashboard/?layout=order&embed=1"></iframe>
-    </section>
+    <!-- Dashboard views, embedded (loaded only when chosen) -->
+    <div class="right" id="right">
+      <section class="card frame tool" data-tool="order" data-src="/dashboard/?layout=order&embed=1"></section>
+      <section class="card frame tool" data-tool="roster" data-src="/dashboard/?layout=roster&embed=1"></section>
+    </div>
   </main>
 
   <script src="/sound/sound.js"></script>
