@@ -32,9 +32,8 @@ body:hover { cursor: default; }
 
 .hidden { display: none !important; }
 
-/* Header: shared with Front of House in /shared/header.css (same size on every screen;
+/* Header: shared with Front of House in /shared/header.css (scales with the window width;
    ?scale= still enlarges it, the roster auto-fit doesn't shrink it). */
-.top { font-size: calc(15px * var(--user-scale, 1)); }
 
 /* Layout -------------------------------------------------------------------- */
 main {

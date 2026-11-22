@@ -26,8 +26,7 @@ button, select, input { font: inherit; color: inherit; }
 /* Footer: shared with Backstage in /shared/footer.css. */
 
 .hidden { display: none !important; }
-/* Header: shared with Backstage in /shared/header.css, at the same size. */
-.top { font-size: 15px; }
+/* Header: shared with Backstage in /shared/header.css. */
 
 main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 14px; padding: 14px 1.2rem; }
 main.only-left { grid-template-columns: 1fr; }
