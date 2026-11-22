@@ -79,9 +79,20 @@
   }
 
   // ---- rendering ---------------------------------------------------------------
+  // Holiday theme (Admin → Settings → Backstage). ?holiday=0 / =1 on a link overrides it for one screen.
+  const urlHolidayRaw = new URLSearchParams(location.search).get('holiday');
+  const urlHoliday = urlHolidayRaw == null ? null : !['0', 'false', 'off', 'no'].includes(urlHolidayRaw);
+
   function render() {
     if (!state) return;
     const { display, plan } = state;
+    {
+      const h = display.holiday || {};
+      const embedded = document.body.classList.contains('embed'); // inside Front of House
+      const on = (urlHoliday ?? Boolean(h.enabled)) && (!embedded || h.foh !== false);
+      // Embedded views only get the snow caps; the host page draws the snow, lights and pile.
+      window.Holiday?.apply(on ? { snow: !embedded && h.snow !== false, lights: !embedded && h.lights !== false, pile: !embedded && h.pile !== false, caps: h.caps !== false } : null);
+    }
     const logo = $('logo');
     logo.classList.toggle('hidden', display.showLogo === false);
     const logoSrc = `/branding/logo?v=${display.logoVersion || 0}`;

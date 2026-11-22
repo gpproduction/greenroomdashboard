@@ -195,6 +195,9 @@
   const urlTools = new URLSearchParams(location.search).get('tools');
   // Theme: ?theme= on the link wins, else Admin → Settings → Front of House.
   const urlTheme = new URLSearchParams(location.search).get('theme');
+  // Holiday theme (Admin → Settings → Backstage). ?holiday=0 / =1 on a link overrides it for one screen.
+  const urlHolidayRaw = new URLSearchParams(location.search).get('holiday');
+  const urlHoliday = urlHolidayRaw == null ? null : !['0', 'false', 'off', 'no'].includes(urlHolidayRaw);
   // Countdown to the next service: ?countdown=0 / =1 on the link wins, else Admin → Settings → Front of House.
   const urlCountdownRaw = new URLSearchParams(location.search).get('countdown');
   const urlCountdown = urlCountdownRaw == null ? null : !['0', 'false', 'off', 'no'].includes(urlCountdownRaw);
@@ -347,6 +350,11 @@
         const hasAnn = Boolean(msg.payload.announcements?.enabled && msg.payload.announcements.groups?.length);
         applyTools((urlTools ? urlTools.split(',').map((t) => t.trim()) : msg.payload.sound?.tools || ['level', 'spotify', 'order'])
           .filter((t) => t !== 'announcements' || hasAnn));
+        {
+          const h = msg.payload.display?.holiday || {};
+          const on = urlHoliday ?? Boolean(h.enabled && h.foh !== false);
+          window.Holiday?.apply(on ? { snow: h.snow !== false, lights: h.lights !== false, pile: h.pile !== false, caps: h.caps !== false } : null);
+        }
         // Logo follows Backstage's settings (show/hide, uploaded logo).
         const d = msg.payload.display || {};
         $('logo').classList.toggle('hidden', d.showLogo === false);

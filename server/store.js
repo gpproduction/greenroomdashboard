@@ -48,6 +48,8 @@ function defaults() {
         // Song notes: a song's Planning Center description (+ any item-note columns listed) under the song
         songNotes: { enabled: true, noteCategories: '' },
         // Service starting alarm: a flashing countdown bar this many minutes before each service time
+        // Holiday theme: falling snow, lights under the header, snow on the footer and on panels
+        holiday: { enabled: false, snow: true, lights: true, pile: true, caps: true, foh: true },
         startAlarm: { enabled: true, minutes: 2, title: 'Service starts in', message: 'Worship team to the stage' },
         reloadHours: 6,
       },

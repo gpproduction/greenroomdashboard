@@ -1,0 +1,70 @@
+/* Holiday theme (Admin → Settings → Backstage → Holiday theme).
+   Decorative only: nothing here takes clicks. The lights push the panels down slightly so
+   they never cover a title. */
+
+/* ---- Falling snow (canvas drawn by holiday.js) ---------------------------------- */
+.holiday-snow {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 40;
+}
+
+/* ---- Christmas lights hanging from the bottom of the header ---------------------- */
+.top { position: relative; }
+.holiday-lights {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 0;
+  pointer-events: none; z-index: 30;
+}
+.holiday-lights svg.wire { position: absolute; left: 0; top: -2px; width: 100%; height: 14px; overflow: visible; }
+.holiday-lights .bulb {
+  position: absolute; top: 0; width: 0.62em; height: 0.95em; margin-left: -0.31em;
+  font-size: var(--chrome-fs, 15px);
+  border-radius: 50% 50% 46% 46% / 40% 40% 60% 60%;
+  background: var(--c); box-shadow: 0 0 0.5em 0.12em var(--c);
+  transform-origin: 50% -0.3em; transform: rotate(var(--r, 0deg));
+  animation: holiday-twinkle var(--d, 2.4s) ease-in-out var(--delay, 0s) infinite;
+}
+.holiday-lights .bulb::before { /* socket */
+  content: ""; position: absolute; left: 50%; top: -0.28em; width: 0.36em; height: 0.32em; margin-left: -0.18em;
+  background: #2b3a2f; border-radius: 2px;
+}
+/* Make room for the bulbs so they never cover a panel's title. */
+html.holiday-lit main, html.holiday-lit .start-alarm { margin-top: calc(var(--chrome-fs, 15px) * 1.1); }
+html.holiday-lit .start-alarm:not(.hidden) ~ main { margin-top: 0; } /* only the first thing under the header moves */
+@keyframes holiday-twinkle {
+  0%, 100% { opacity: 1; filter: brightness(1.1); }
+  50% { opacity: 0.45; filter: brightness(0.7); box-shadow: 0 0 0.15em 0 var(--c); }
+}
+
+/* ---- Snow piled along the bottom of the screen (sits on the footer's top edge) ----- */
+.status { position: relative; }
+.holiday-pile {
+  position: absolute; left: 0; right: 0; top: 0; height: 18px; transform: translateY(-100%);
+  pointer-events: none; z-index: 20;
+  background: no-repeat bottom / 100% 100% url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 30' preserveAspectRatio='none'><path fill='white' d='M0 30 L0 22 C40 12 80 14 120 19 C170 25 210 9 260 12 C310 15 330 24 380 21 C440 17 470 6 530 9 C590 12 610 22 670 20 C720 18 760 8 820 11 C880 14 900 24 960 21 C1010 18 1050 10 1100 13 C1140 16 1170 22 1200 18 L1200 30 Z'/></svg>");
+  filter: drop-shadow(0 -1px 2px rgba(0, 0, 0, 0.25));
+}
+
+/* ---- Snow caps on panels and Planning Center section headers ----------------------- */
+html.holiday-caps .panel, html.holiday-caps .team, html.holiday-caps .card,
+html.holiday-caps .order li.header { position: relative; }
+html.holiday-caps .panel::before, html.holiday-caps .team::before, html.holiday-caps .card::before,
+html.holiday-caps .order li.header::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px;
+  pointer-events: none; z-index: 2;
+  background: no-repeat top / 100% 100% url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 18' preserveAspectRatio='none'><path fill='white' d='M0 0 H600 V7 C585 9 578 15 566 14 C552 13 552 6 534 7 C512 8 505 12 488 11 C470 10 468 5 448 6 C425 7 424 16 404 15 C388 14 392 6 370 7 C345 8 338 11 318 10 C300 9 296 4 276 6 C255 8 254 15 232 14 C214 13 216 6 196 7 C172 8 166 12 146 11 C128 10 124 5 104 7 C84 9 82 16 62 15 C46 14 46 7 28 7 C16 7 8 10 0 9 Z'/></svg>");
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25));
+}
+html.holiday-caps .panel::before, html.holiday-caps .team::before, html.holiday-caps .card::before {
+  height: 11px; border-radius: inherit; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+}
+html.holiday-caps .order li.header::before { height: 7px; }
+/* Light theme: tint the snow and give it a soft edge so it shows on white panels. */
+html[data-theme="pco-light"].holiday-caps .panel::before, html[data-theme="pco-light"].holiday-caps .team::before,
+html[data-theme="pco-light"].holiday-caps .card::before, html[data-theme="pco-light"].holiday-caps .order li.header::before,
+html[data-theme="pco-light"] .holiday-pile {
+  filter: drop-shadow(0 1px 1.5px rgba(60, 90, 130, 0.7)) drop-shadow(0 0 1px rgba(60, 90, 130, 0.5));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holiday-lights .bulb { animation: none; }
+}

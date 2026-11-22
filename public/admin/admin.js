@@ -676,6 +676,7 @@
       [['growpoint', 'GrowPoint (navy)'], ['pco-dark', 'Planning Center Dark'], ['pco-light', 'Planning Center Light']].map(([v, t]) => el('option', { value: v, selected: (obj[key] || 'growpoint') === v }, t)));
     s.display.announcements ??= { enabled: false, source: 'both', noteCategory: 'Announcements', hideInOrder: true };
     s.display.songNotes ??= { enabled: true, noteCategories: '' };
+    s.display.holiday ??= { enabled: false, snow: true, lights: true, pile: true, caps: true, foh: true };
     s.display.startAlarm ??= { enabled: true, minutes: 2, title: 'Service starts in', message: 'Worship team to the stage' };
 
     async function saveSection(section) {
@@ -930,6 +931,15 @@
         field('Show item descriptions from Planning Center', el('select', { onchange: (e) => { s.display.itemDescriptions = e.target.value; } },
           [['announcements', 'Announcements only'], ['all', 'All items'], ['none', 'None']].map(([v, t]) => el('option', { value: v, selected: (s.display.itemDescriptions || 'announcements') === v }, t))),
           '“Announcements only” shows the description on items with “announcement” in the title.')),
+      el('h3', {}, 'Holiday theme'),
+      el('p', { class: 'help' }, 'Festive touches for the season. They’re decoration only and never cover the times or names. Turn it off again after Christmas. One screen can override it with ', el('code', {}, '?holiday=0'), ' or ', el('code', {}, '?holiday=1'), ' on its link.'),
+      check('Holiday theme on', s.display.holiday, 'enabled'),
+      el('div', { class: 'grid2' },
+        check('Falling snow', s.display.holiday, 'snow'),
+        check('Christmas lights under the header', s.display.holiday, 'lights'),
+        check('Snow piled along the bottom', s.display.holiday, 'pile'),
+        check('Snow on panels and section headers', s.display.holiday, 'caps'),
+        check('Also on Front of House', s.display.holiday, 'foh')),
       el('h3', {}, 'Song notes'),
       el('p', { class: 'help' }, 'Arrangement reminders (“Tag the bridge 2x”) shown in amber under each song. They come from the song item’s description in Planning Center, plus any item-note columns you list below.'),
       check('Show song notes', s.display.songNotes, 'enabled'),
