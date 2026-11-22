@@ -313,7 +313,10 @@
         if (state.serverTime) clockOffset = state.serverTime - Date.now();
         applyTheme(urlTheme || msg.payload.sound?.theme);
         renderAnnouncements(msg.payload.announcements);
-        applyTools(urlTools ? urlTools.split(',').map((t) => t.trim()) : msg.payload.sound?.tools || ['level', 'spotify', 'order']);
+        // The Announcements tool only appears when this plan actually has announcements.
+        const hasAnn = Boolean(msg.payload.announcements?.enabled && msg.payload.announcements.groups?.length);
+        applyTools((urlTools ? urlTools.split(',').map((t) => t.trim()) : msg.payload.sound?.tools || ['level', 'spotify', 'order'])
+          .filter((t) => t !== 'announcements' || hasAnn));
         const p = msg.payload.plan;
         $('plan-meta').textContent = p ? [p.serviceTypeName, p.dates].filter(Boolean).join(' · ') : '';
       }

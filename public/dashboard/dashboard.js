@@ -333,10 +333,11 @@
   function renderAnnouncements() {
     const panel = $('ann-panel');
     const a = state?.announcements;
-    panel.classList.toggle('hidden', !a?.enabled);
-    if (!a?.enabled) return;
+    // Only shown when this plan has announcements (items or plan notes), even with the box turned on.
+    const show = Boolean(a?.enabled && a.groups?.length);
+    panel.classList.toggle('hidden', !show);
+    if (!show) return;
     const box = $('announcements');
-    if (!a.groups.length) { box.replaceChildren(el('div', { class: 'empty' }, 'No announcements in this plan.')); return; }
     const showTitles = a.groups.length > 1;
     // Shown as written: plain lines as-is, "-" lines as bullets, blank lines as spacing, indentation kept.
     box.replaceChildren(...a.groups.map((g) => el('div', { class: 'ann-group' },
@@ -351,7 +352,7 @@
     const box = $('timers');
     box.replaceChildren();
     // The right-hand column holds timers and/or announcements.
-    document.body.classList.toggle('no-timers', !state?.showTimers && !state?.announcements?.enabled);
+    document.body.classList.toggle('no-timers', !state?.showTimers && !(state?.announcements?.enabled && state.announcements.groups?.length));
     if (!state?.showTimers) { panel.classList.add('hidden'); return; }
     panel.classList.remove('hidden');
     if (!pp.connected) {

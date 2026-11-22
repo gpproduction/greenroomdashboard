@@ -61,7 +61,8 @@ function dashboardState() {
   const useNative = db.settings.pco.useNativeLeaders !== false;
   const ann = db.settings.display.announcements || {};
   // With the Announcements box on, announcement details move out of the order of service.
-  const moveAnnouncements = ann.enabled && ann.hideInOrder !== false;
+  // (Only when the box takes them from the items; with "plan notes only" they stay in the order.)
+  const moveAnnouncements = ann.enabled && ann.hideInOrder !== false && (ann.source || 'both') !== 'notes';
   const songCfg = display.songNotes || {};
   const songCats = String(songCfg.noteCategories || '').split(',').map((c) => c.trim().toLowerCase()).filter(Boolean);
   const items = (detail?.items || []).map(({ notes, leaders, ...item }) => ({
