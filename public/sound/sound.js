@@ -2,6 +2,8 @@
 (() => {
   const $ = (id) => document.getElementById(id);
   let osm = null;
+  let pp = null; // ProPresenter state
+  let wsConnected = false;
   let sp = null;
   let signedIn = false;
   let bootId = null;
@@ -281,11 +283,26 @@
   }
 
   // ---- live connection ---------------------------------------------------------------------
+  // ---- connection status (footer) -------------------------------------------------------
+  function renderStatus() {
+    const set = (id, cls, title) => { const n = $(id); n.className = cls; n.title = title || ''; };
+    const pco = state?.pco;
+    set('status-pco', !state ? '' : pco?.ok ? 'ok' : 'bad', pco?.error || (pco?.lastSync ? `Last sync ${fmtTime(pco.lastSync)}` : ''));
+    const ppOn = state?.propresenterEnabled ?? state?.showTimers;
+    set('status-pp', !state ? '' : !ppOn ? 'off' : pp?.connected ? 'ok' : 'bad', pp?.connected ? 'Connected' : pp?.error || (ppOn ? 'Not connected' : 'Turned off in Settings'));
+    const u = state?.unifi;
+    set('status-unifi', !u?.enabled ? 'hidden' : u.connected ? 'ok' : 'bad', u?.error || '');
+    set('status-osm', !osm?.enabled ? 'hidden' : osm.connected ? 'ok' : 'bad', osm?.error || (osm?.connected ? 'Receiving levels' : 'No levels received'));
+    // Spotify shows once it's linked (or has an error); not connected = sign-in needed or offline.
+    set('status-spotify', !(sp?.connected || sp?.error) ? 'hidden' : sp.connected ? 'ok' : 'bad', sp?.error || 'Connected');
+    set('status-ws', wsConnected ? 'ok' : 'bad');
+  }
+
   let retry = 1000;
   let pickersLoaded = false;
   function connect() {
     const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
-    ws.onopen = () => { retry = 1000; };
+    ws.onopen = () => { retry = 1000; wsConnected = true; renderStatus(); };
     ws.onmessage = (ev) => {
       const msg = JSON.parse(ev.data);
       if (msg.type === 'state') {
@@ -301,15 +318,16 @@
         $('plan-meta').textContent = p ? [p.serviceTypeName, p.dates].filter(Boolean).join(' · ') : '';
       }
       if (msg.type === 'osm') { osm = msg.payload; renderMeter(); }
-      if (msg.type === 'propresenter') renderTimers(msg.payload);
+      if (msg.type === 'propresenter') { pp = msg.payload; renderTimers(pp); }
       if (msg.type === 'media') renderRecording(msg.payload);
       if (msg.type === 'spotify') {
         sp = msg.payload;
         renderSpotify();
         if (!pickersLoaded && sp.connected && signedIn) { pickersLoaded = true; loadPickers(); }
       }
+      renderStatus();
     };
-    ws.onclose = () => { setTimeout(connect, retry); retry = Math.min(retry * 2, 15000); };
+    ws.onclose = () => { wsConnected = false; renderStatus(); setTimeout(connect, retry); retry = Math.min(retry * 2, 15000); };
     ws.onerror = () => ws.close();
   }
 

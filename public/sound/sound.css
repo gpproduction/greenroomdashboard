@@ -23,6 +23,15 @@ body {
 }
 button, select, input { font: inherit; color: inherit; }
 
+/* Footer: connection status dots (same as Backstage) */
+.status { display: flex; justify-content: flex-end; align-items: center; padding: 0.4rem 1.2rem; font-size: 0.75rem; color: var(--muted); border-top: 1px solid var(--line); }
+.status .conns { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; }
+.status .dot { display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--muted); margin-right: 0.4rem; vertical-align: middle; }
+.status .ok .dot { background: var(--ok); }
+.status .bad .dot { background: var(--bad); }
+.status .off .dot { background: var(--line); }
+.status .hidden { display: none; }
+
 .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.7rem 1.2rem; border-bottom: 1px solid var(--line); }
 .brand { display: flex; align-items: center; gap: 1rem; min-width: 0; }
 .logo { height: 2rem; width: auto; }
