@@ -219,11 +219,14 @@ body.layout-timers .timer .time { font-size: 7rem; }
 .order li.cols span:last-child { text-align: right; }
 /* Section headers as full-width shaded bands */
 .order li.header {
-  display: block; grid-column: 1 / -1;
+  grid-column: 1 / -1;
   background: var(--panel-2); color: var(--text);
   font-weight: 700; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em;
   padding: 0.7rem 1rem;
 }
+.order li.header > span:first-child { font-weight: 700; }
+.order li.header .timing { font-size: 0.85rem; letter-spacing: 0.02em; text-transform: none; }
+.order li.header .len { font-weight: 600; }
 .order li .lead { color: var(--brand-text); font-size: 1.1rem; font-weight: 600; white-space: nowrap; max-width: 24rem; overflow: hidden; text-overflow: ellipsis; padding-top: 0.1rem; }
 .order li.active .lead { color: #fff; }
 .order li .lead.people { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }

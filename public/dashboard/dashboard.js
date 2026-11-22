@@ -242,9 +242,22 @@
     list.append(el('li', { class: 'cols' }, el('span', {}, 'Item'), el('span', {}, 'Leader'), el('span', {}, 'Time')));
     let plannedTotal = 0;
     let actualTotal = 0;
+    // Each section header totals the items under it (until the next header), like Planning Center.
+    const sectionOf = sections(items);
     for (const item of items) {
       if (item.type === 'header') {
-        list.append(el('li', { class: 'header' }, item.title));
+        const sec = sectionOf.get(item.id);
+        const secActual = hasActuals ? sec.items.reduce((a, i) => a + actualSeconds(i), 0) : 0;
+        const hasLive = Boolean(live?.recording && sec.items.some((i) => i.id === live.currentItemId));
+        const secOver = sec.planned && secActual > sec.planned;
+        list.append(el('li', { class: 'header' },
+          el('span', {}, item.title),
+          el('span', {}),
+          el('span', { class: 'timing' },
+            secActual || hasLive
+              ? el('span', { class: 'actual' + (secOver ? ' over' : ' under'), id: hasLive ? 'live-section' : null, 'data-section': item.id }, fmtDuration(secActual))
+              : null,
+            sec.planned ? el('span', { class: 'len' }, secActual || hasLive ? `of ${fmtDuration(sec.planned)}` : fmtDuration(sec.planned)) : null)));
         continue;
       }
       const isActive = item.id === activeId;
@@ -278,6 +291,19 @@
     }
   }
 
+  // header id -> { planned, items } for the items between it and the next header.
+  function sections(items) {
+    const out = new Map();
+    let cur = null;
+    for (const i of items) {
+      if (i.type === 'header') { cur = { planned: 0, items: [] }; out.set(i.id, cur); continue; }
+      if (!cur) continue;
+      cur.items.push(i);
+      cur.planned += i.length || 0;
+    }
+    return out;
+  }
+
   // Tick the running item and total every second without re-rendering the list.
   function tickLive() {
     const live = state?.live;
@@ -288,6 +314,16 @@
       const secs = actualSeconds(item);
       node.textContent = fmtDuration(secs);
       node.classList.toggle('over', Boolean(item.length && secs > item.length));
+    }
+    const secNode = $('live-section');
+    if (secNode) {
+      const sec = sections(state.plan.items).get(secNode.dataset.section);
+      if (sec) {
+        const secs = sec.items.reduce((a, i) => a + actualSeconds(i), 0);
+        secNode.textContent = fmtDuration(secs);
+        secNode.classList.toggle('over', Boolean(sec.planned && secs > sec.planned));
+        secNode.classList.toggle('under', !(sec.planned && secs > sec.planned));
+      }
     }
     const total = $('live-total');
     if (total) total.textContent = fmtDuration(state.plan.items.reduce((sum, i) => sum + (i.type !== 'header' && i.position === 'during' ? actualSeconds(i) : 0), 0));
