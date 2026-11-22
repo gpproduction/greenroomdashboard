@@ -200,6 +200,7 @@ admin.put('/settings', (req, res) => {
       const allowed = ['level', 'spotify', 'timers', 'recording', 'announcements', 'order', 'roster'];
       if (body.sound.tools) s.sound.tools = body.sound.tools.filter((t) => allowed.includes(t));
       if (['growpoint', 'pco-dark', 'pco-light'].includes(body.sound.theme)) s.sound.theme = body.sound.theme;
+      if (typeof body.sound.showServiceCountdown === 'boolean') s.sound.showServiceCountdown = body.sound.showServiceCountdown;
     }
     if (body.unifi) {
       const { token, hasToken, ...rest } = body.unifi;

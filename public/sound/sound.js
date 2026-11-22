@@ -6,6 +6,8 @@
   let signedIn = false;
   let bootId = null;
   let tz;
+  let state = null; // latest dashboard state (plan times, settings)
+  let clockOffset = 0; // server time ≈ Date.now() + clockOffset
 
   // ---- helpers ---------------------------------------------------------------------
   const fmt1 = (v) => (v == null ? '--' : v.toFixed(1));
@@ -33,8 +35,38 @@
     let t;
     try { t = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: tz }); } catch { t = new Date().toLocaleTimeString(); }
     $('clock').textContent = t;
+    tickCountdown();
     tickProgress();
   }, 1000);
+
+  // ---- countdown to the next service time (same as Backstage) ---------------------------
+  const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz }); } catch { return new Date(iso).toLocaleTimeString(); } };
+  const fmtDuration = (sec) => {
+    sec = Math.max(0, Math.round(sec));
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+  };
+  const div = (cls, text) => { const d = document.createElement('div'); d.className = cls; d.textContent = text; return d; };
+  function tickCountdown() {
+    const box = $('service-countdown');
+    const times = (state?.plan?.times || []).filter((t) => t.type === 'service' || t.type === 'rehearsal');
+    const on = urlCountdown ?? state?.sound?.showServiceCountdown !== false;
+    if (!on || !times.length) { box.replaceChildren(); return; }
+    const now = Date.now() + clockOffset;
+    const current = times.find((t) => Date.parse(t.startsAt) <= now && now < Date.parse(t.endsAt));
+    const next = times.find((t) => Date.parse(t.startsAt) > now);
+    const label = (t) => t.name || (t.type === 'service' ? `${fmtTime(t.startsAt)} Service` : 'Rehearsal');
+    box.classList.toggle('live', Boolean(current));
+    let parts = [];
+    if (current && current.type === 'service') parts = [`${label(current)} · in progress`, `ends ${fmtTime(current.endsAt)}`];
+    else if (next && Date.parse(next.startsAt) - now < 12 * 3600_000) parts = [`${label(next)} starts in`, fmtDuration((Date.parse(next.startsAt) - now) / 1000)];
+    else if (next) {
+      let day; try { day = new Date(next.startsAt).toLocaleDateString('en-US', { weekday: 'short', timeZone: tz }); } catch { day = ''; }
+      parts = ['Next', `${day} ${fmtTime(next.startsAt)}`.trim()];
+    }
+    if (!parts.length) { box.replaceChildren(); return; }
+    if (box.textContent !== parts.join('')) box.replaceChildren(div('label', parts[0]), div('value', parts[1]));
+  }
 
   // ---- level meter --------------------------------------------------------------------
   const LOW = 60, HIGH = 110;
@@ -140,6 +172,9 @@
   const urlTools = new URLSearchParams(location.search).get('tools');
   // Theme: ?theme= on the link wins, else Admin → Settings → Front of House.
   const urlTheme = new URLSearchParams(location.search).get('theme');
+  // Countdown to the next service: ?countdown=0 / =1 on the link wins, else Admin → Settings → Front of House.
+  const urlCountdownRaw = new URLSearchParams(location.search).get('countdown');
+  const urlCountdown = urlCountdownRaw == null ? null : !['0', 'false', 'off', 'no'].includes(urlCountdownRaw);
   let theme = 'growpoint';
   function applyTheme(t) {
     t = ['pco-dark', 'pco-light'].includes(t) ? t : 'growpoint';
@@ -257,6 +292,8 @@
         if (bootId && msg.payload.bootId !== bootId) location.reload(); // server updated
         bootId = msg.payload.bootId;
         tz = msg.payload.display?.timezone;
+        state = msg.payload;
+        if (state.serverTime) clockOffset = state.serverTime - Date.now();
         applyTheme(urlTheme || msg.payload.sound?.theme);
         renderAnnouncements(msg.payload.announcements);
         applyTools(urlTools ? urlTools.split(',').map((t) => t.trim()) : msg.payload.sound?.tools || ['level', 'spotify', 'order']);

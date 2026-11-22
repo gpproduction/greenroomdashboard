@@ -1187,10 +1187,12 @@
     ];
     const chosenTools = new Set(s.sound?.tools || ['level', 'spotify', 'order']);
     const soundTheme = themeSelect(s.sound || (s.sound = {}), 'theme');
+    const soundCountdown = el('input', { type: 'checkbox', checked: s.sound.showServiceCountdown !== false });
     const soundSection = el('div', { class: 'section' },
       el('h2', {}, 'Front of House'),
       el('p', { class: 'help' }, 'Choose the tools shown on Front of House (the sound desk page). Small tools (level, Spotify, timers, recording) stack on the left; the order of service and mic list fill the right.'),
       el('div', { class: 'grid2', style: 'margin-bottom:0.8rem' }, field('Theme', soundTheme)),
+      el('label', { class: 'check', style: 'margin-bottom:0.8rem' }, soundCountdown, 'Show countdown to the next service time (in the header, like Backstage)'),
       el('div', { class: 'tool-grid' }, TOOLS.map(([key, name, desc]) => el('label', { class: 'tool' },
         el('input', { type: 'checkbox', checked: chosenTools.has(key), onchange: (e) => { if (e.target.checked) chosenTools.add(key); else chosenTools.delete(key); } }),
         el('span', {}, el('strong', {}, name), el('span', { class: 'help' }, desc))))),
@@ -1198,7 +1200,7 @@
         el('button', {
           class: 'primary',
           onclick: async () => {
-            s.sound = { tools: TOOLS.map(([k]) => k).filter((k) => chosenTools.has(k)), theme: soundTheme.value };
+            s.sound = { tools: TOOLS.map(([k]) => k).filter((k) => chosenTools.has(k)), theme: soundTheme.value, showServiceCountdown: soundCountdown.checked };
             await saveSection('sound');
           },
         }, 'Save Front of House settings'),

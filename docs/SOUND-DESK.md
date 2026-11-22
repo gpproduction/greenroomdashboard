@@ -24,6 +24,8 @@ The small tools stack on the left. The order of service and the mic list fill th
 
 To give one computer a different set, use a link such as `/sound/?tools=level,spotify,order`.
 
+The header can show the same countdown to the next service time as Backstage (Admin → Settings → Front of House → *Show countdown to the next service time*). One computer can override it with `?countdown=0` or `?countdown=1`.
+
 ---
 
 ## Open Sound Meter (v1.4.x)
