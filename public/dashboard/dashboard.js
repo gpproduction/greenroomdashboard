@@ -444,6 +444,24 @@
     return hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
   }
 
+  // During a recorded service: the Planning Center section (header) the live item is in, and how
+  // long that section has run so far (counting up), against its planned length.
+  function liveSection(s, now) {
+    const live = s?.live;
+    const items = s?.plan?.items || [];
+    if (!live?.recording || live.test || !live.currentItemId || !live.startsAt || now < Date.parse(live.startsAt)) return null;
+    const idx = items.findIndex((i) => i.id === live.currentItemId);
+    if (idx < 0) return null;
+    let h = idx;
+    while (h >= 0 && items[h].type !== 'header') h -= 1;
+    const members = [];
+    for (let j = h + 1; j < items.length && items[j].type !== 'header'; j += 1) members.push(items[j]);
+    const running = (id) => (id === live.currentItemId ? Math.max(0, (now - live.currentStartedAt) / 1000) : 0);
+    const secs = members.reduce((a, i) => a + (live.actuals?.[i.id] || 0) + running(i.id), 0);
+    const planned = members.reduce((a, i) => a + (i.length || 0), 0);
+    return { title: h >= 0 ? items[h].title : items[idx].title, secs, planned };
+  }
+
   function tickClock() {
     tickLive();
     const g = greeting();
@@ -456,8 +474,12 @@
     const current = times.find((t) => Date.parse(t.startsAt) <= now && now < Date.parse(t.endsAt));
     const next = times.find((t) => Date.parse(t.startsAt) > now);
     const label = (t) => t.name || (t.type === 'service' ? `${fmtTime(t.startsAt)} Service` : 'Rehearsal');
-    box.classList.toggle('live', Boolean(current));
-    if (current && current.type === 'service') {
+    const sec = liveSection(state, serverNow());
+    box.classList.toggle('live', Boolean(current || sec));
+    box.classList.toggle('over', Boolean(sec?.planned && sec.secs > sec.planned));
+    if (sec) {
+      box.replaceChildren(el('div', { class: 'label' }, sec.planned ? `${sec.title} · of ${fmtDuration(sec.planned)}` : sec.title), el('div', { class: 'value' }, fmtDuration(sec.secs)));
+    } else if (current && current.type === 'service') {
       box.replaceChildren(el('div', { class: 'label' }, `${label(current)} · in progress`), el('div', { class: 'value' }, `ends ${fmtTime(current.endsAt)}`));
     } else if (next && Date.parse(next.startsAt) - now < 12 * 3600_000) {
       box.replaceChildren(el('div', { class: 'label' }, `${label(next)} starts in`), el('div', { class: 'value' }, fmtDuration((Date.parse(next.startsAt) - now) / 1000)));

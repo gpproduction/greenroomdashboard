@@ -25,6 +25,7 @@
 .top .countdown .label { color: var(--muted); font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.08em; }
 .top .countdown .value { font-size: 1.8em; font-weight: 700; font-variant-numeric: tabular-nums; }
 .top .countdown.live .value { color: var(--ok); }
+.top .countdown.live.over .value { color: var(--bad); } /* current section running over its planned time */
 
 /* Phones / narrow windows: logo + title on the first line, countdown and clock below. */
 @media (max-width: 900px) {
