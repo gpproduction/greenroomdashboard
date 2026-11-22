@@ -28,7 +28,7 @@ html[data-theme="pco-dark"] .status { background: #202021; border-top: 1px solid
 html[data-theme="pco-dark"] .pill { background: #2d2d2f; border-color: #424245; }
 html[data-theme="pco-dark"] .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
 html[data-theme="pco-dark"] .heading { border-left-color: rgba(255,255,255,0.15); }
-html[data-theme="pco-dark"] .stats > div, html[data-theme="pco-dark"] .art, html[data-theme="pco-dark"] .ctl, html[data-theme="pco-dark"] .pick select, html[data-theme="pco-dark"] .pick button, html[data-theme="pco-dark"] .bar, html[data-theme="pco-dark"] .progress, html[data-theme="pco-dark"] .rec { background: #2d2d2f; border-color: #424245; }
+html[data-theme="pco-dark"] .stats > div, html[data-theme="pco-dark"] .art, html[data-theme="pco-dark"] .ctl, html[data-theme="pco-dark"] .pick select, html[data-theme="pco-dark"] .pick button, html[data-theme="pco-dark"] .bar, html[data-theme="pco-dark"] .progress, html[data-theme="pco-dark"] #recording .rec { background: #2d2d2f; border-color: #424245; }
 
 /* ---- Planning Center light ---- */
 html[data-theme="pco-light"] { --bg: #eef1f3; --panel: #ffffff; --panel-2: #f1f2f4; --line: #e2e5e9;
@@ -86,7 +86,7 @@ html[data-theme="pco-light"] .card { background: #fff; border: 1px solid var(--l
 html[data-theme="pco-light"] .card h2 { color: #6b7280; }
 html[data-theme="pco-light"] .heading { border-left-color: rgba(0,0,0,0.15); }
 html[data-theme="pco-light"] .sub { color: #4b5563; }
-html[data-theme="pco-light"] .stats > div, html[data-theme="pco-light"] .art, html[data-theme="pco-light"] .ctl, html[data-theme="pco-light"] .pick select, html[data-theme="pco-light"] .pick button, html[data-theme="pco-light"] .bar, html[data-theme="pco-light"] .progress, html[data-theme="pco-light"] .rec { background: #f3f4f6; border-color: #d9dde3; color: #111827; }
+html[data-theme="pco-light"] .stats > div, html[data-theme="pco-light"] .art, html[data-theme="pco-light"] .ctl, html[data-theme="pco-light"] .pick select, html[data-theme="pco-light"] .pick button, html[data-theme="pco-light"] .bar, html[data-theme="pco-light"] .progress, html[data-theme="pco-light"] #recording .rec { background: #f3f4f6; border-color: #d9dde3; color: #111827; }
 html[data-theme="pco-light"] .np-artist, html[data-theme="pco-light"] .times, html[data-theme="pco-light"] .scale, html[data-theme="pco-light"] .unit, html[data-theme="pco-light"] .src, html[data-theme="pco-light"] .t-name { color: #6b7280; }
 html[data-theme="pco-light"] .unit span:first-child { color: #111827; }
 html[data-theme="pco-light"] .ctl.big { background: #1db954; border-color: #1db954; color: #fff; }
