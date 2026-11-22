@@ -282,6 +282,9 @@
     $('media').replaceChildren(...pills.map((p) => {
       const f = p.cloneNode(true);
       f.className = p.className.replace(/^rec\b/, 'pill') + (/\b(on|warn|offline)\b/.test(p.className) ? '' : ' idle');
+      const lbl = f.querySelector('.lbl');
+      lbl.className = 'pill-label';
+      if (lbl.textContent === 'Record') lbl.textContent = 'OBS Record'; // same wording as Backstage
       return f;
     }));
     if (!pills.length) { $('recording').innerHTML = '<div class="msg">HyperDeck and OBS aren’t set up (Admin → Settings → Connections).</div>'; return; }

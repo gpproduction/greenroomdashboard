@@ -1,0 +1,46 @@
+/* Shared screen footer (Backstage, Front of House): recorder/stream pills on the left,
+   connection status dots on the right. Sizes are in em off one base size on .status,
+   so both screens match (Backstage's ?scale= still enlarges it). */
+.status {
+  display: flex; flex-wrap: wrap; gap: 0.5em 1.4em; justify-content: space-between; align-items: center;
+  padding: 0.4em 1.4em; font-size: calc(15px * var(--user-scale, 1)); color: var(--muted);
+  border-top: 1px solid var(--line);
+}
+.status .conns { display: flex; flex-wrap: wrap; gap: 0.5em 1.4em; margin-left: auto; font-size: 0.75em; }
+.status .hidden { display: none !important; }
+
+/* Recorder / stream pills (HyperDeck, OBS) */
+.status .media { display: flex; gap: 0.6em; flex-wrap: wrap; }
+.status .pill {
+  display: inline-flex; align-items: center; gap: 0.45em;
+  padding: 0.25em 0.7em; border-radius: 99px;
+  background: var(--panel); border: 1px solid var(--line);
+  font-size: 0.95em; color: var(--text);
+}
+.status .pill .pill-label { color: var(--muted); font-size: 0.84em; text-transform: uppercase; letter-spacing: 0.06em; }
+.status .pill b { font-weight: 800; letter-spacing: 0.04em; }
+.status .pill .tc { font-variant-numeric: tabular-nums; font-weight: 700; }
+.status .pill .tc:empty { display: none; }
+.status .pill .dot { margin-right: 0; }
+.status .pill.on { border-color: rgba(255, 77, 77, 0.6); background: rgba(255, 77, 77, 0.12); }
+.status .pill.on .dot { background: #ff4d4d; animation: status-pulse 1.6s ease-in-out infinite; }
+.status .pill.on b { color: #ff8080; }
+.status .pill.warn { border-color: var(--warn); }
+.status .pill.warn .dot { background: var(--warn); }
+.status .pill.warn b { color: var(--warn); }
+.status .pill.idle .dot { background: var(--ok); }
+.status .pill.idle b { color: var(--muted); font-weight: 600; }
+.status .pill.offline { opacity: 0.6; }
+.status .pill.offline .dot { background: var(--bad); }
+
+/* Status dots */
+.status .dot { display: inline-block; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--muted); margin-right: 0.4em; vertical-align: middle; }
+.status .ok .dot { background: var(--ok); }
+.status .bad .dot { background: var(--bad); }
+.status .off .dot { background: var(--line); }
+@keyframes status-pulse { 50% { opacity: 0.3; } }
+
+@media (max-width: 760px) {
+  .status { padding: 0.5em 1em; }
+  .status .conns { gap: 0.6em 1em; }
+}

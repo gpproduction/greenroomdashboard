@@ -23,32 +23,7 @@ body {
 }
 button, select, input { font: inherit; color: inherit; }
 
-/* Footer: connection status dots (same as Backstage) */
-.status { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem 1.4rem; flex-wrap: wrap; padding: 0.4rem 1.2rem; font-size: 0.75rem; color: var(--muted); border-top: 1px solid var(--line); }
-.status .conns { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; margin-left: auto; }
-/* Running HyperDeck / stream / record timers (same pills as Backstage) */
-.status .media { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-.status .pill { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.25rem 0.7rem; border-radius: 99px; background: var(--panel); border: 1px solid var(--line); font-size: 0.95rem; color: var(--text); }
-.status .pill .lbl { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
-.status .pill b { font-weight: 800; letter-spacing: 0.04em; }
-.status .pill .tc { font-variant-numeric: tabular-nums; font-weight: 700; }
-.status .pill .tc:empty { display: none; }
-.status .pill .dot { margin-right: 0; background: var(--ok); }
-.status .pill.on { border-color: rgba(255, 77, 77, 0.6); background: rgba(255, 77, 77, 0.12); }
-.status .pill.on .dot { background: #ff4d4d; animation: status-pulse 1.6s ease-in-out infinite; }
-.status .pill.on b { color: #ff8080; }
-.status .pill.warn { border-color: var(--warn); }
-.status .pill.warn .dot { background: var(--warn); }
-.status .pill.warn b { color: var(--warn); }
-.status .pill.idle b { color: var(--muted); font-weight: 600; }
-.status .pill.offline { opacity: 0.6; }
-.status .pill.offline .dot { background: var(--bad); }
-@keyframes status-pulse { 50% { opacity: 0.3; } }
-.status .dot { display: inline-block; width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--muted); margin-right: 0.4rem; vertical-align: middle; }
-.status .ok .dot { background: var(--ok); }
-.status .bad .dot { background: var(--bad); }
-.status .off .dot { background: var(--line); }
-.status .hidden { display: none; }
+/* Footer: shared with Backstage in /shared/footer.css. */
 
 .hidden { display: none !important; }
 /* Header: shared with Backstage in /shared/header.css, at the same size. */
