@@ -32,26 +32,9 @@ body:hover { cursor: default; }
 
 .hidden { display: none !important; }
 
-/* Header -------------------------------------------------------------------- */
-.top {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: center;
-  gap: 2rem;
-  padding: 0.8rem 1.4rem;
-  border-bottom: 1px solid var(--line);
-}
-.brand { display: flex; align-items: center; gap: 1.3rem; min-width: 0; }
-.logo { height: 2.6rem; width: auto; max-width: 18rem; object-fit: contain; flex: none; }
-.logo:not(.hidden) + .heading { padding-left: 1.3rem; border-left: 1px solid var(--line); }
-.heading { min-width: 0; }
-.title { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.01em; }
-.plan { color: var(--muted); font-size: 1rem; margin-top: 0.15rem; }
-.clock { font-size: 2.4rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.countdown { text-align: right; }
-.countdown .label { color: var(--muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.08em; }
-.countdown .value { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.countdown.live .value { color: var(--ok); }
+/* Header: shared with Front of House in /shared/header.css (same size on every screen;
+   ?scale= still enlarges it, the roster auto-fit doesn't shrink it). */
+.top { font-size: calc(15px * var(--user-scale, 1)); }
 
 /* Layout -------------------------------------------------------------------- */
 main {
@@ -335,15 +318,6 @@ body.embed .start-alarm { display: none !important; }
 /* Small screens (phones, narrow windows): stack the header and let the page scroll. */
 @media (max-width: 760px) {
   body { overflow: auto; }
-  .top { grid-template-columns: 1fr auto; gap: 0.4rem 1rem; padding: 0.7rem 1rem; }
-  .brand { grid-column: 1 / -1; gap: 0.8rem; }
-  .logo { height: 1.8rem; max-width: 10rem; }
-  .logo:not(.hidden) + .heading { padding-left: 0.8rem; }
-  .title { font-size: 1.3rem; }
-  .plan { font-size: 0.85rem; }
-  .countdown { text-align: left; }
-  .countdown .value { font-size: 1.2rem; }
-  .clock { font-size: 1.4rem; }
   main { grid-template-columns: 1fr !important; padding: 0.7rem 1rem; }
   .status { flex-wrap: wrap; padding: 0.5rem 1rem; }
   .status .conns { flex-wrap: wrap; gap: 0.6rem 1rem; }

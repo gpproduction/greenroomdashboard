@@ -50,18 +50,9 @@ button, select, input { font: inherit; color: inherit; }
 .status .off .dot { background: var(--line); }
 .status .hidden { display: none; }
 
-.top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.7rem 1.2rem; border-bottom: 1px solid var(--line); }
-.brand { display: flex; align-items: center; gap: 1rem; min-width: 0; }
-.logo { height: 2rem; width: auto; }
-.heading { padding-left: 1rem; border-left: 1px solid var(--line); }
-.title { font-size: 1.4rem; font-weight: 700; }
-.sub { color: var(--muted); font-size: 0.9rem; }
-.clock { font-size: 1.9rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.top .brand { flex: 1; }
-.countdown { text-align: right; }
-.countdown .label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
-.countdown .value { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.countdown.live .value { color: var(--ok); }
+.hidden { display: none !important; }
+/* Header: shared with Backstage in /shared/header.css, at the same size. */
+.top { font-size: 15px; }
 
 main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 14px; padding: 14px 1.2rem; }
 main.only-left { grid-template-columns: 1fr; }
@@ -167,16 +158,4 @@ main.only-left .right, main.only-right .left { display: none; }
   body { overflow: auto; min-height: 100vh; }
   main { flex: none; grid-template-columns: 1fr; }
   .right .frame { min-height: 80vh; }
-}
-/* Phone: logo + title on the first line, countdown and clock below */
-@media (max-width: 640px) {
-  .top { flex-wrap: wrap; gap: 0.5rem 1rem; padding: 0.7rem 1rem; }
-  .top .brand { flex: 1 1 100%; gap: 0.8rem; }
-  .logo { height: 1.6rem; max-width: 9rem; object-fit: contain; flex: none; }
-  .heading { padding-left: 0.8rem; min-width: 0; }
-  .title { font-size: 1.15rem; }
-  .sub { font-size: 0.8rem; }
-  .countdown { text-align: left; flex: 1; }
-  .countdown .value { font-size: 1.2rem; }
-  .clock { font-size: 1.3rem; }
 }

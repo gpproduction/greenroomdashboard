@@ -323,6 +323,11 @@
         const hasAnn = Boolean(msg.payload.announcements?.enabled && msg.payload.announcements.groups?.length);
         applyTools((urlTools ? urlTools.split(',').map((t) => t.trim()) : msg.payload.sound?.tools || ['level', 'spotify', 'order'])
           .filter((t) => t !== 'announcements' || hasAnn));
+        // Logo follows Backstage's settings (show/hide, uploaded logo).
+        const d = msg.payload.display || {};
+        $('logo').classList.toggle('hidden', d.showLogo === false);
+        const logoSrc = `/branding/logo?v=${d.logoVersion || 0}`;
+        if ($('logo').getAttribute('src') !== logoSrc) $('logo').setAttribute('src', logoSrc);
         const p = msg.payload.plan;
         $('plan-meta').textContent = p ? [p.serviceTypeName, p.dates].filter(Boolean).join(' · ') : '';
       }
