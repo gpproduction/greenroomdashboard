@@ -278,6 +278,12 @@
         pills.push(o.record?.paused ? pill('Record', 'warn', 'PAUSED', obsTime(o.record.timecode)) : o.record?.active ? pill('Record', 'on', 'REC', obsTime(o.record.timecode)) : pill('Record', '', 'Off'));
       }
     }
+    // Footer: the same running timers as pills, always visible (like Backstage).
+    $('media').replaceChildren(...pills.map((p) => {
+      const f = p.cloneNode(true);
+      f.className = p.className.replace(/^rec\b/, 'pill') + (/\b(on|warn|offline)\b/.test(p.className) ? '' : ' idle');
+      return f;
+    }));
     if (!pills.length) { $('recording').innerHTML = '<div class="msg">HyperDeck and OBS aren’t set up (Admin → Settings → Connections).</div>'; return; }
     $('recording').replaceChildren(...pills);
   }
