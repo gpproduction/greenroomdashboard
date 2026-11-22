@@ -1067,7 +1067,7 @@
       el('p', { class: 'help' }, 'Like Services LIVE: when an order-of-service item goes live in ProPresenter, Backstage starts counting how long you have been on it, and the actual time is saved for each service time. It only records during Planning Center service times, never rehearsals. An item stays live until the next one starts.'),
       check('Record actual item times', s.live, 'enabled'),
       el('div', { class: 'grid2' },
-        field('Start recording before each service (minutes)', el('input', { type: 'number', min: 0, max: 120, value: s.live.preRollMinutes, oninput: (e) => { s.live.preRollMinutes = Number(e.target.value); } }), 'Covers pre-service items like the countdown.'),
+        field('Start recording before each service (minutes)', el('input', { type: 'number', min: 0, max: 120, value: s.live.preRollMinutes, oninput: (e) => { s.live.preRollMinutes = Number(e.target.value); } }), 'Item times start counting this many minutes before each service time (default 5). Anything live before then isn’t counted.'),
         field('Keep recording after each service ends (minutes)', el('input', { type: 'number', min: 0, max: 120, value: s.live.postRollMinutes, oninput: (e) => { s.live.postRollMinutes = Number(e.target.value); } }), 'In case the service runs long.')),
       el('div', { class: 'row', style: 'margin-top:0.6rem' }, el('button', { class: 'primary', onclick: () => saveSection('live') }, 'Save timing settings')));
 

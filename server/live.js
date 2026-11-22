@@ -38,7 +38,7 @@ export function matchItem(items, presentationName) {
  * Where windows overlap (9:00's post-roll vs 11:00's pre-roll) a service that is in
  * progress wins, then one about to start, then one that just ended.
  */
-export function serviceWindow(times, now, { preRollMinutes = 20, postRollMinutes = 15 } = {}) {
+export function serviceWindow(times, now, { preRollMinutes = 5, postRollMinutes = 15 } = {}) {
   const rank = (w) => (now >= w.start && now <= w.end ? 0 : now < w.start ? 1 : 2);
   let best = null;
   for (const t of times || []) {
