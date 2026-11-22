@@ -83,6 +83,8 @@ function dashboardState() {
     generatedAt: new Date().toISOString(),
     display,
     showTimers: display.showTimers && (db.settings.propresenter.enabled || pco.isDemo()),
+    // Status dot: ProPresenter is in use (timers, live item, live timing) even when its timers aren't shown.
+    propresenterEnabled: Boolean(db.settings.propresenter.enabled || pco.isDemo()),
     plan: detail ? { ...detail.plan, items } : null,
     serverTime: Date.now(), // lets dashboards correct for clock drift on the live timer
     sound: db.settings.sound, // which tools the sound desk page shows

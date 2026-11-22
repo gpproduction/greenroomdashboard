@@ -378,7 +378,9 @@
   function renderStatus() {
     const set = (id, cls, title) => { const n = $(id); n.className = cls; n.title = title || ''; };
     set('status-pco', state?.pco?.ok ? 'ok' : 'bad', state?.pco?.error || (state?.pco?.lastSync ? `Last sync ${fmtTime(state.pco.lastSync)}` : ''));
-    set('status-pp', !state?.showTimers ? 'off' : pp.connected ? 'ok' : 'bad', pp.error || '');
+    // Follows the connection whenever ProPresenter is turned on in Settings, whether or not its timers are shown.
+    const ppOn = state?.propresenterEnabled ?? state?.showTimers;
+    set('status-pp', !ppOn ? 'off' : pp.connected ? 'ok' : 'bad', pp.connected ? 'Connected' : pp.error || (ppOn ? 'Not connected' : 'Turned off in Settings'));
     set('status-ws', wsConnected ? 'ok' : 'bad');
     const u = state?.unifi;
     set('status-unifi', !u?.enabled ? 'hidden' : u.connected ? 'ok' : 'bad', u?.error || '');
