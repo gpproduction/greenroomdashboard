@@ -34,7 +34,7 @@
     });
     const data = await res.json().catch(() => ({}));
     if (res.status === 401 && !path.startsWith('/api/auth')) { showLogin(); throw new Error('Signed out'); }
-    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    if (!res.ok) { const err = new Error(data.error || `Request failed (${res.status})`); err.data = data; throw err; }
     return data;
   }
 
@@ -216,6 +216,63 @@
     ];
   }
 
+  // StudioLive channel names for this plan: preview, send, reset (Settings → Connections → StudioLive).
+  function mixerNames(plan, meta) {
+    if (!settings?.studiolive?.enabled) return '';
+    const st = meta?.serviceTypeId || plan.serviceTypeId;
+    const box = el('div');
+    const status = el('div', { class: 'help' });
+    const show = (rows, { sent = false } = {}) => {
+      const kindLabel = (e) => (e.kind === 'aux' ? `Aux ${e.ch}` : `Ch ${e.ch}`);
+      box.replaceChildren(el('div', { class: 'table-wrap' }, el('table', { class: 'timing-table' },
+        el('thead', {}, el('tr', {}, ['Mixer', 'Device', sent ? 'Was' : 'Now on the console', sent ? 'Now' : 'Will be', ''].map((h) => el('th', {}, h)))),
+        el('tbody', {}, rows.map((e) => {
+          const now = sent ? e.before : e.now;
+          const next = sent ? e.after : e.name;
+          const same = !sent && now === e.name;
+          return el('tr', {},
+            el('td', {}, kindLabel(e)),
+            el('td', {}, e.device, e.role === 'tuned' ? el('span', { class: 'muted' }, ' (tuned)') : null),
+            el('td', { class: 'muted' }, now === undefined ? '' : now === null ? 'no such channel' : now || '(blank)'),
+            el('td', {}, el('strong', {}, next ?? '—')),
+            el('td', {}, sent ? (e.missing ? el('span', { class: 'error' }, 'no such channel') : e.ok ? el('span', { class: 'ok-text' }, '✓') : el('span', { class: 'error' }, 'not changed'))
+              : same ? el('span', { class: 'muted' }, 'already set') : ''));
+        })))));
+    };
+    const preview = async (reset = false) => {
+      status.className = 'help'; status.textContent = 'Reading the mixer…';
+      try {
+        const r = await api(`/api/admin/studiolive/plan/${st}/${plan.id}${reset ? '?reset=1' : ''}`);
+        if (!r.entries.length) { status.textContent = 'No devices have mixer channels yet. Add them on the Devices page (Mixer ch, Tuned ch, Mixer aux).'; box.replaceChildren(); return; }
+        status.className = r.error ? 'help error' : 'help';
+        status.textContent = r.error ? `Couldn't read the mixer (${r.error}). Showing the names that would be sent.` : reset ? 'Reset preview: every channel goes back to its device name.' : '';
+        show(r.entries);
+      } catch (err) { status.className = 'help error'; status.textContent = err.message; }
+    };
+    const send = async (reset = false, confirmed = false) => {
+      if (!confirmed && !confirm(reset ? 'Set every mixer channel back to its device name (VOX 1, T. VOX 1, IEM 1…)?' : 'Rename the mixer channels for this plan?')) return;
+      status.className = 'help'; status.textContent = 'Sending names to the mixer…';
+      try {
+        const r = await api(`/api/admin/studiolive/send/${st}/${plan.id}`, { method: 'POST', body: { reset, confirm: confirmed } });
+        const ok = r.results.filter((x) => x.ok).length;
+        status.className = ok === r.results.length ? 'help ok-text' : 'help error';
+        status.textContent = ok === r.results.length ? `✓ All ${ok} channel names are on the mixer.` : `${ok} of ${r.results.length} names took. See the list below.`;
+        show(r.results, { sent: true });
+      } catch (err) {
+        if (err.data?.needsConfirm && confirm('A service is running right now. The scribble strips will change on the console. Rename anyway?')) return send(reset, true);
+        status.className = 'help error'; status.textContent = err.message;
+      }
+    };
+    return el('div', { class: 'section' },
+      el('h2', {}, 'Mixer channel names'),
+      el('p', { class: 'help' }, 'Names the StudioLive’s channels after who has each mic and IEM in this plan: clean vocal “Alex”, tuned vocal “T. Alex”, aux mix “IEM 1 - Alex”. Channels with nobody on them go back to the device name. Nothing changes on the console until you press Send.'),
+      el('div', { class: 'row' },
+        el('button', { onclick: () => preview(false) }, 'Preview names'),
+        el('button', { class: 'primary', onclick: () => send(false) }, 'Send names to mixer'),
+        el('button', { class: 'ghost', onclick: () => send(true) }, 'Reset to device names')),
+      status, box);
+  }
+
   function renderPlan(root, data, meta, activeId, reload) {
     const { plan, teams, conflicts } = data;
     const conflictIds = new Set(conflicts.map((c) => c.deviceId));
@@ -353,7 +410,7 @@
         el('button', { class: 'primary', onclick: () => switchTab('devices') }, 'Add devices')));
       return;
     }
-    root.replaceChildren(header, conflictBox || '', ...blocks, guests, reset);
+    root.replaceChildren(header, conflictBox || '', ...blocks, guests, mixerNames(plan, meta), reset);
   }
 
   // ---- Live tab ---------------------------------------------------------------------------
@@ -608,6 +665,11 @@
       }, el('option', { value: '' }, '— none —'), partners.map((p) => el('option', { value: p.id, selected: p.id === d.linkedId }, p.name)));
     };
 
+    // StudioLive channel numbers (Settings → Connections → StudioLive).
+    const mixerInput = (d, key, title) => el('td', { style: 'width:5.5rem' }, el('input', {
+      type: 'number', min: 1, max: 200, value: d[key] ?? '', title, placeholder: '—',
+      oninput: (e) => save(d, { [key]: e.target.value === '' ? null : Number(e.target.value) }),
+    }));
     const table = (type, label) => {
       const list = devices.filter((d) => d.type === type);
       return el('div', { class: 'section' },
@@ -622,7 +684,8 @@
             },
           }, `+ Add ${type === 'mic' ? 'mic' : type === 'iem' ? 'IEM' : 'item'}`)),
         list.length ? el('div', { class: 'table-wrap' }, el('table', { class: 'devices-table' },
-          el('thead', {}, el('tr', {}, ['', 'Name', 'Channel', 'Frequency', 'Type / model', type === 'mic' ? 'Linked IEM' : type === 'iem' ? 'Linked mic' : '', 'Notes', 'Active', ''].map((h) => el('th', {}, h)))),
+          el('thead', {}, el('tr', {}, ['', 'Name', 'Channel', 'Frequency', 'Type / model', type === 'mic' ? 'Linked IEM' : type === 'iem' ? 'Linked mic' : '',
+            ...(type === 'iem' ? ['Mixer aux'] : ['Mixer ch', type === 'mic' ? 'Tuned ch' : '']), 'Notes', 'Active', ''].map((h) => el('th', {}, h)))),
           el('tbody', {}, list.map((d) => el('tr', {},
             el('td', { style: 'white-space:nowrap' },
               el('button', { class: 'small ghost', title: 'Move up', onclick: () => move(d, -1) }, '↑'),
@@ -632,6 +695,9 @@
             el('td', {}, el('input', { value: d.frequency, placeholder: 'e.g. 518.250 MHz', oninput: (e) => save(d, { frequency: e.target.value }) })),
             el('td', {}, el('input', { value: d.kind, placeholder: type === 'mic' ? 'Handheld / Headset' : type === 'iem' ? 'Pack / Wired' : 'DI / Pack / Mic', oninput: (e) => save(d, { kind: e.target.value }) })),
             el('td', {}, type === 'other' ? '' : linkSelect(d)),
+            ...(type === 'iem'
+              ? [mixerInput(d, 'mixerAux', 'Aux mix number on the StudioLive, named “IEM 1 - Alex”')]
+              : [mixerInput(d, 'mixerCh', 'StudioLive input channel named “Alex”'), type === 'mic' ? mixerInput(d, 'mixerChTuned', 'StudioLive tuned vocal channel named “T. Alex”') : el('td', {})]),
             el('td', {}, el('input', { value: d.notes, oninput: (e) => save(d, { notes: e.target.value }) })),
             el('td', {}, el('input', { type: 'checkbox', checked: d.active, onchange: (e) => save(d, { active: e.target.checked }) })),
             el('td', {}, el('button', {
@@ -1029,6 +1095,51 @@
         el('button', { class: 'primary', onclick: () => saveSection('obs') }, 'Save OBS settings')),
       obsResult);
 
+    // StudioLive (mixer channel names) ----------------------------------------------------
+    s.studiolive ??= { enabled: false, host: '', port: 53000, maxLength: 0 };
+    const slResult = el('div', { class: 'help' });
+    const slRenameResult = el('div', { class: 'help' });
+    const slCh = el('input', { type: 'number', min: 1, max: 200, placeholder: 'e.g. 64', style: 'max-width:8rem' });
+    const slName = el('input', { value: 'Backstage test', maxlength: 24 });
+    const slSection = el('div', { class: 'section' },
+      el('h2', {}, 'StudioLive (mixer channel names)'),
+      el('p', { class: 'help' }, 'Names your StudioLive channels after whoever is on each mic and IEM, from the Assign page. A mic names its clean vocal channel (“Alex”) and its tuned vocal channel (“T. Alex”); an IEM names its aux mix (“IEM 1 - Alex”). Set each device’s channel numbers on the Devices page. Only channel names are ever changed: nothing that affects sound.'),
+      el('p', { class: 'help' }, 'This uses the same network connection as UC Surface. It isn’t an official PreSonus feature, so check it with the test below before relying on it.'),
+      check('Use the StudioLive', s.studiolive, 'enabled'),
+      el('div', { class: 'grid2' },
+        field('Mixer IP address', el('input', { value: s.studiolive.host, placeholder: '192.168.1.33', oninput: (e) => { s.studiolive.host = e.target.value.trim(); } })),
+        field('Port', el('input', { type: 'number', value: s.studiolive.port ?? 53000, oninput: (e) => { s.studiolive.port = Number(e.target.value); } }), 'Normally 53000'),
+        field('Longest name (characters)', el('input', { type: 'number', min: 0, max: 32, value: s.studiolive.maxLength ?? 0, oninput: (e) => { s.studiolive.maxLength = Number(e.target.value); } }), '0 = no limit. Set it if the scribble strips cut names off.')),
+      el('div', { class: 'row', style: 'margin-top:0.6rem' },
+        el('button', { class: 'primary', onclick: () => saveSection('studiolive') }, 'Save StudioLive settings'),
+        el('button', {
+          onclick: async () => {
+            slResult.className = 'help'; slResult.textContent = 'Saving and connecting…';
+            try {
+              await api('/api/admin/settings', { method: 'PUT', body: { studiolive: s.studiolive } });
+              const r = await api('/api/admin/studiolive/test', { method: 'POST' });
+              slResult.className = 'help ok-text';
+              slResult.textContent = `✓ Connected — ${r.line} input channels, ${r.aux} aux mixes. ${r.sample.join(' · ')}`;
+            } catch (err) { slResult.className = 'help error'; slResult.textContent = err.message; }
+          },
+        }, 'Test connection')),
+      slResult,
+      el('h3', {}, 'Try a rename first'),
+      el('p', { class: 'help' }, 'Renames one spare input channel and reads it back, so you can see the console accepts names. Rename it back afterwards the same way.'),
+      el('div', { class: 'row' }, el('span', {}, 'Channel'), slCh, el('span', {}, 'to'), slName,
+        el('button', {
+          onclick: async () => {
+            slRenameResult.className = 'help'; slRenameResult.textContent = 'Renaming…';
+            try {
+              const r = await api('/api/admin/studiolive/rename', { method: 'POST', body: { kind: 'line', ch: Number(slCh.value), name: slName.value } });
+              if (r.missing) throw new Error(`The console has no channel ${r.ch}`);
+              slRenameResult.className = r.ok ? 'help ok-text' : 'help error';
+              slRenameResult.textContent = r.ok ? `✓ Channel ${r.ch} was “${r.before}”, now “${r.after}”. Check the scribble strip.` : `Sent, but the console still says “${r.after}”. It may not accept names this way.`;
+            } catch (err) { slRenameResult.className = 'help error'; slRenameResult.textContent = err.message; }
+          },
+        }, 'Rename')),
+      slRenameResult);
+
     // UniFi Access ----------------------------------------------------------------------
     const unifiResult = el('div', { class: 'help' });
     const unifiSection = el('div', { class: 'section' },
@@ -1221,7 +1332,7 @@
     const PAGES = [
       ['Service', [['pco', 'Planning Center', pcoSection], ['live', 'Live timing', liveSection]]],
       ['Screens', [['dashboard', 'Backstage', displaySection], ['sound', 'Front of House', soundSection]]],
-      ['Connections', [['propresenter', 'ProPresenter', ppSection], ['hyperdeck', 'HyperDeck', hdSection], ['obs', 'OBS', obsSection], ['unifi', 'UniFi Access', unifiSection], ['osm', 'Open Sound Meter', osmSection], ['spotify', 'Spotify', spSection]]],
+      ['Connections', [['propresenter', 'ProPresenter', ppSection], ['hyperdeck', 'HyperDeck', hdSection], ['obs', 'OBS', obsSection], ['unifi', 'UniFi Access', unifiSection], ['osm', 'Open Sound Meter', osmSection], ['spotify', 'Spotify', spSection], ['studiolive', 'StudioLive', slSection]]],
       ['System', [['updates', 'Updates', updSection], ['password', 'Password', pwSection]]],
     ];
     const allPages = PAGES.flatMap(([, list]) => list);

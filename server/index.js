@@ -18,6 +18,7 @@ import * as media from './media.js';
 import * as unifi from './unifi.js';
 import * as osm from './osm.js';
 import * as spotify from './spotify.js';
+import * as studiolive from './studiolive.js';
 import { historyList, historyDetail, historyTrends, historyCsv } from './history.js';
 import { buildAnnouncements, isAnnouncementItem } from './announcements.js';
 import { buildRoster, assignmentChanges, FIELDS, visibilityKey } from './roster.js';
@@ -204,6 +205,14 @@ admin.put('/settings', (req, res) => {
       if (body.sound.tools) s.sound.tools = body.sound.tools.filter((t) => allowed.includes(t));
       if (['growpoint', 'pco-dark', 'pco-light'].includes(body.sound.theme)) s.sound.theme = body.sound.theme;
       if (typeof body.sound.showServiceCountdown === 'boolean') s.sound.showServiceCountdown = body.sound.showServiceCountdown;
+    }
+    if (body.studiolive) {
+      const { enabled, host, port, maxLength } = body.studiolive;
+      s.studiolive ??= {};
+      if (typeof enabled === 'boolean') s.studiolive.enabled = enabled;
+      if (typeof host === 'string') s.studiolive.host = host.trim();
+      if (port !== undefined) s.studiolive.port = Number(port) || studiolive.DEFAULT_PORT;
+      if (maxLength !== undefined) s.studiolive.maxLength = Math.max(0, Number(maxLength) || 0);
     }
     if (body.unifi) {
       const { token, hasToken, ...rest } = body.unifi;
@@ -435,11 +444,73 @@ admin.delete('/plans/:planId/extras/:key', (req, res) => {
   res.json({ ok: true });
 });
 
+// StudioLive channel names ---------------------------------------------------------------
+function mixerCfg() {
+  const c = store.get().settings.studiolive || {};
+  if (!c.host) { const e = new Error('Set the mixer’s address under Settings → Connections → StudioLive'); e.status = 400; throw e; }
+  return { host: c.host, port: Number(c.port) || studiolive.DEFAULT_PORT, maxLength: Number(c.maxLength) || 0 };
+}
+async function mixerPlan(serviceTypeId, planId, { reset = false } = {}) {
+  const db = store.get();
+  const detail = await sync.getPlanDetail(serviceTypeId, planId);
+  const people = reset ? [] : buildRoster(detail, db, { forAdmin: true }).teams.flatMap((t) => t.members)
+    .map((m) => ({ name: m.name, short: pco.shortName(m.name), mic: m.mic?.id, iem: m.iem?.id, other: m.other?.id }));
+  const devices = db.devices.filter((d) => d.active !== false || reset);
+  return { detail, entries: studiolive.planNames(people, devices, { maxLength: mixerCfg().maxLength }) };
+}
+const sendErr = (res, err) => res.status(err.status || 502).json({ error: err.message });
+admin.post('/studiolive/test', async (req, res) => {
+  try { const c = mixerCfg(); res.json(await studiolive.test(c.host, c.port)); } catch (err) { sendErr(res, err); }
+});
+// Preview: what each channel is called now and what it would become.
+admin.get('/studiolive/plan/:serviceTypeId/:planId', async (req, res) => {
+  try {
+    const { entries } = await mixerPlan(req.params.serviceTypeId, req.params.planId, { reset: req.query.reset === '1' });
+    let current = null;
+    let error = null;
+    try { const c = mixerCfg(); const s = await studiolive.open(c.host, c.port); current = s.names; await s.close(); } catch (err) { error = err.message; }
+    res.json({ entries: entries.map((e) => ({ ...e, now: current ? current[e.kind]?.[e.ch] ?? null : undefined })), error });
+  } catch (err) { sendErr(res, err); }
+});
+// Send names (or reset to device names). Asks for confirmation during a service time.
+admin.post('/studiolive/send/:serviceTypeId/:planId', async (req, res) => {
+  try {
+    const c = mixerCfg();
+    const db = store.get();
+    const { detail, entries } = await mixerPlan(req.params.serviceTypeId, req.params.planId, { reset: Boolean(req.body?.reset) });
+    const active = sync.getActive();
+    const inService = active && db.settings.live.enabled !== false && live.serviceWindow(active.plan.times, Date.now(), db.settings.live);
+    if (inService && !req.body?.confirm) return res.status(409).json({ needsConfirm: true, error: 'A service is running right now.' });
+    if (!entries.length) return res.status(400).json({ error: 'No devices have mixer channels yet. Add them on the Devices page.' });
+    const results = await studiolive.sendNames(c.host, c.port, entries);
+    console.log(`[studiolive] ${req.body?.reset ? 'reset' : 'sent'} ${results.filter((r) => r.ok).length}/${results.length} names for plan ${detail.plan.id}`);
+    res.json({ results });
+  } catch (err) { sendErr(res, err); }
+});
+// Rename one channel (to check the console accepts names before trusting it on a Sunday).
+admin.post('/studiolive/rename', async (req, res) => {
+  try {
+    const c = mixerCfg();
+    const kind = req.body?.kind === 'aux' ? 'aux' : 'line';
+    const ch = Number(req.body?.ch);
+    const name = studiolive.asciiName(req.body?.name);
+    if (!Number.isInteger(ch) || ch < 1 || !name) return res.status(400).json({ error: 'Pick a channel number and a name' });
+    const [r] = await studiolive.sendNames(c.host, c.port, [{ kind, ch, name }]);
+    res.json(r);
+  } catch (err) { sendErr(res, err); }
+});
+
 // Devices
 const DEVICE_FIELDS = ['type', 'name', 'channel', 'frequency', 'kind', 'notes', 'active'];
+const MIXER_FIELDS = ['mixerCh', 'mixerChTuned', 'mixerAux']; // StudioLive channel / aux numbers
 function cleanDevice(body) {
   const d = {};
   for (const f of DEVICE_FIELDS) if (f in body) d[f] = typeof body[f] === 'string' ? body[f].slice(0, 120) : body[f];
+  for (const f of MIXER_FIELDS) {
+    if (!(f in body)) continue;
+    const n = Number(body[f]);
+    d[f] = body[f] === '' || body[f] == null || !Number.isInteger(n) || n < 1 || n > 200 ? null : n;
+  }
   if (d.type && !FIELDS.includes(d.type)) d.type = 'mic';
   return d;
 }

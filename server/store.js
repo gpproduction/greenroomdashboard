@@ -60,6 +60,8 @@ function defaults() {
       },
       hyperdeck: { enabled: false, host: '', port: 9993 }, // Blackmagic HyperDeck Ethernet protocol
       obs: { enabled: false, host: '', port: 4455, password: '' }, // obs-websocket v5
+      // StudioLive console: names mixer channels after whoever has each mic / IEM (Assign tab)
+      studiolive: { enabled: false, host: '192.168.1.33', port: 53000, maxLength: 0 },
       unifi: { enabled: false, host: '', port: 12445, token: '', leadMinutes: 60 }, // UniFi Access developer API; arrivals count from leadMinutes before today's first rehearsal/service
       osm: { enabled: false, source: '', curve: 'A', time: 'Slow', offset: 0, leqMinutes: 15, warn: 95, alarm: 100 }, // Open Sound Meter levels
       spotify: { clientId: '', refreshToken: '' }, // Spotify Web API (PKCE)
