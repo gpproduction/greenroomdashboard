@@ -40,6 +40,17 @@ test('same first names get a last initial; nicknames and accents are handled', (
   assert.equal(asciiName('Renée “RJ”'), 'Renee "RJ"');
 });
 
+test('no last initial for a shared first name unless both people get a mixer channel', () => {
+  const plan = planNames([
+    { name: 'Alex Rivera', mic: 'm1', iem: 'e1' },
+    { name: 'Alex Rivera', mic: 'm1' }, // same person, also listed on another team
+    { name: 'Alex Chen' }, // no device
+    { name: 'Alex Kim', iem: 'e9' }, // IEM with no aux number: never named on the mixer
+  ], devices);
+  assert.equal(plan.find((e) => e.kind === 'line' && e.ch === 1).name, 'Alex');
+  assert.equal(plan.find((e) => e.kind === 'aux' && e.ch === 1).name, 'IEM 1 - Alex');
+});
+
 test('optional max length trims names', () => {
   const plan = planNames([{ name: 'Christopher Young', mic: 'm1', iem: 'e1' }], devices, { maxLength: 8 });
   assert.equal(plan.find((e) => e.kind === 'aux' && e.ch === 1).name, 'IEM 1 -');

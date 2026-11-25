@@ -193,12 +193,21 @@ export function asciiName(s) {
  */
 export function planNames(people, devices, { maxLength = 0 } = {}) {
   const firstOf = (p) => asciiName(p.short || String(p.name).split(/\s+/)[0]);
-  // Two people with the same first name get a last initial ("Alex R.").
+  // Two *different* people who both get a mixer channel and share a first name get a last
+  // initial ("Alex R."). Everyone else (no device, or the same person listed on two teams) doesn't count.
+  const named = new Set(devices.filter((d) => d.mixerCh || d.mixerChTuned || d.mixerAux).map((d) => d.id));
   const counts = new Map();
-  for (const p of people) counts.set(firstOf(p).toLowerCase(), (counts.get(firstOf(p).toLowerCase()) || 0) + 1);
+  const seen = new Set();
+  for (const p of people) {
+    const who = String(p.name).trim().toLowerCase();
+    if (seen.has(who) || !['mic', 'iem', 'other'].some((f) => p[f] && named.has(p[f]))) continue;
+    seen.add(who);
+    const k = firstOf(p).toLowerCase();
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
   const label = (p) => {
     const first = firstOf(p);
-    if (counts.get(first.toLowerCase()) < 2) return first;
+    if ((counts.get(first.toLowerCase()) || 0) < 2) return first;
     const last = asciiName(String(p.name).trim().split(/\s+/).slice(1).pop() || '');
     return last ? `${first} ${last[0]}.` : first;
   };
