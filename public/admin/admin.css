@@ -123,6 +123,13 @@ td select { width: 100%; }
 }
 .status-U { color: var(--warn); font-size: 0.8rem; }
 .source-default { font-size: 0.75rem; color: var(--muted); }
+/* Assign: amber dot inside the dropdown when the device was remembered from last time */
+.select-wrap { position: relative; }
+.select-wrap.remembered select { padding-right: 3.4rem; }
+.select-wrap .auto-dot {
+  position: absolute; right: 2.1rem; top: 50%; width: 0.55rem; height: 0.55rem; margin-top: -0.275rem;
+  border-radius: 50%; background: #f0a92e; box-shadow: 0 0 0 2px rgba(240, 169, 46, 0.25); pointer-events: none;
+}
 .swatch { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 3px; vertical-align: middle; margin-right: 0.3rem; border: 1px solid var(--line); }
 td.conflict select { border-color: var(--bad); }
 td.mismatch select { border-color: #e0b100; background: #fff7d1; color: #3d2f00; }

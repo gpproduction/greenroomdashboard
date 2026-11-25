@@ -211,7 +211,7 @@
       el('option', { value: '' }, '—'),
       ...list.map((d) => {
         const other = usedBy.get(d.id);
-        return el('option', { value: d.id, selected: d.id === current }, `${d.name}${d.channel ? ` (ch ${d.channel})` : ''}${other ? `  · in use: ${other}` : ''}`);
+        return el('option', { value: d.id, selected: d.id === current }, `${d.name}${other ? `  · in use: ${other}` : ''}`);
       }),
     ];
   }
@@ -287,7 +287,7 @@
         plan.id === activeId ? el('span', { class: 'badge live' }, 'Showing on Backstage') : el('span', { class: 'badge' }, 'Not on Backstage'),
         el('a', { href: plan.url, target: '_blank', rel: 'noopener' }, 'Open in Planning Center ↗'),
       ),
-      el('p', { class: 'help' }, 'Assignments save instantly and appear on Backstage within a second. “Show” puts someone on Backstage even without a device (Worship Team is on by default); anyone with a device always shows. Picking a mic also picks its linked IEM; you can still change the IEM on its own. Choices are remembered for future plans (marked “auto”).'),
+      el('p', { class: 'help' }, 'Assignments save instantly and appear on Backstage within a second. “Show” puts someone on Backstage even without a device (Worship Team is on by default); anyone with a device always shows. Picking a mic also picks its linked IEM; you can still change the IEM on its own. Choices are remembered for future plans: an amber dot in a dropdown means it was filled in from last time.'),
       meta?.times?.length ? el('p', { class: 'help' }, meta.times.map((t) => `${t.name || (t.type === 'service' ? 'Service' : t.type)} ${new Date(t.startsAt).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: churchTz() })}`).join(' · ')) : null,
     );
 
@@ -315,11 +315,14 @@
           }, deviceOptions(field, current, others));
           // Yellow when this person's mic and IEM aren't a pair (e.g. VOX 1 with IEM 5).
           const outOfSync = m.mismatch && (field === 'mic' || field === 'iem');
+          // Amber dot inside the dropdown = filled in automatically from last time (not picked for this plan yet).
+          const remembered = m[field]?.source === 'default';
+          if (remembered) sel.title = 'Filled in automatically from last time. Pick it again (or another) to set it for this plan.';
           return el('td', { class: [current && conflictIds.has(current) ? 'conflict' : '', outOfSync ? 'mismatch' : ''].join(' ') },
-            sel,
+            el('div', { class: 'select-wrap' + (remembered ? ' remembered' : '') }, sel, remembered ? el('i', { class: 'auto-dot', 'aria-label': 'remembered from last time' }) : null),
             outOfSync && field === 'iem'
               ? el('div', { class: 'mismatch-note' }, `⚠ ${m.mic.name} is paired with ${m.mismatch.pairedIem || 'another IEM'}`)
-              : m[field]?.source === 'default' ? el('div', { class: 'source-default' }, 'auto (remembered)') : null);
+              : null);
         };
         // "Show on dashboard": always on (and locked) while they have a device.
         const showBox = el('input', {
